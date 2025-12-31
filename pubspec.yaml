@@ -1,5 +1,5 @@
 name: menu_scical
-description: "Professional Scientific Calculator with Options"
+description: "Professional Menul Scientific Calculator"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
+  math_expressions: ^2.4.0
 
 dev_dependencies:
   flutter_test:
