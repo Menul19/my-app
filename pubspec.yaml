@@ -1,5 +1,5 @@
-name: menu_scical
-description: "Professional Menul Scientific Calculator"
+name: menul_music_pro
+description: "Premium Music Player with Bass Visualizer"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,13 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.2
-  math_expressions: ^2.4.0
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^3.0.0
+  on_audio_query: ^2.9.0
+  just_audio: ^0.9.36
+  permission_handler: ^11.3.0
+  google_fonts: ^6.1.0
 
 flutter:
   uses-material-design: true
