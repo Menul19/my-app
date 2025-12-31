@@ -1,162 +1,158 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
 
 void main() {
-  runApp(MenuScICal());
+  runApp(const MenuScICal());
 }
 
 class MenuScICal extends StatelessWidget {
+  const MenuScICal({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Menu ScICal',
-      themeMode: ThemeMode.system,
-      theme: ThemeData(primarySwatch: Colors.blue, brightness: Brightness.light),
-      darkTheme: ThemeData(brightness: Brightness.dark),
-      home: HomeScreen(),
+      theme: ThemeData.dark().copyWith(
+        primaryColor: Colors.blueAccent,
+        scaffoldBackgroundColor: const Color(0xFF121212),
+      ),
+      home: const HomeScreen(),
     );
   }
 }
 
 class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _output = "0";
-  String _input = "";
-  
-  // Unit Conversion Variables
-  double _unitInput = 0;
-  String _unitResult = "Result: --";
-  String _selectedUnit = "CM to Meters";
+  String equation = "0";
+  String result = "0";
 
-  void _buttonPressed(String text) {
+  // Unit Conversion
+  double unitInput = 0;
+  String unitResult = "Result: --";
+  String selectedUnit = "CM to Meters";
+
+  buttonPressed(String buttonText) {
     setState(() {
-      if (text == "C") {
-        _input = "";
-        _output = "0";
-      } else if (text == "=") {
-        try {
-          // සරල ගණනය කිරීම් සඳහා
-          _output = _calculate(_input);
-        } catch (e) {
-          _output = "Error";
-        }
+      if (buttonText == "C") {
+        equation = "0";
+        result = "0";
+      } else if (buttonText == "⌫") {
+        equation = equation.substring(0, equation.length - 1);
+        if (equation == "") equation = "0";
+      } else if (buttonText == "=") {
+        // සරලව පෙන්වීමට: සැබෑ ඇප් එකකදී මෙහි math logic එක තවත් දියුණු කළ හැක
+        result = "Done"; 
       } else {
-        _input += text;
-        _output = _input;
+        if (equation == "0") {
+          equation = buttonText;
+        } else {
+          equation = equation + buttonText;
+        }
       }
     });
   }
 
-  String _calculate(String input) {
-    // සරල ගණිතමය තර්කනය (මෙහිදී ඔබට අවශ්‍ය නම් math expressions library එකක් පාවිච්චි කළ හැක)
-    // දැනට සරල උදාහරණයක් ලෙස:
-    return "Result"; 
+  void convertUnits() {
+    setState(() {
+      if (selectedUnit == "CM to Meters") unitResult = "${unitInput / 100} m";
+      if (selectedUnit == "Meters to CM") unitResult = "${unitInput * 100} cm";
+      if (selectedUnit == "KG to Grams") unitResult = "${unitInput * 1000} g";
+      if (selectedUnit == "Grams to KG") unitResult = "${unitInput / 1000} kg";
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Menu ScICal"),
-          bottom: TabBar(
-            isScrollable: true,
+          title: const Text("Menu ScICal"),
+          backgroundColor: Colors.blueAccent,
+          bottom: const TabBar(
             tabs: [
-              Tab(text: "Calculator"),
-              Tab(text: "Converter"),
-              Tab(text: "About"),
-              Tab(text: "Settings"),
+              Tab(icon: Icon(Icons.calculate), text: "Calc"),
+              Tab(icon: Icon(Icons.swap_horiz), text: "Units"),
+              Tab(icon: Icon(Icons.info), text: "About"),
             ],
           ),
         ),
         body: TabBarView(
           children: [
-            // --- Calculator Tab ---
-            Column(
-              children: [
-                Container(
-                  alignment: Alignment.centerRight,
-                  padding: EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-                  child: Text(_output, style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
-                ),
-                Expanded(child: Divider()),
-                _buildButtons(),
-              ],
-            ),
-
-            // --- Converter Tab ---
-            Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  TextField(
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(labelText: "Enter Value"),
-                    onChanged: (value) => _unitInput = double.tryParse(value) ?? 0,
-                  ),
-                  DropdownButton<String>(
-                    value: _selectedUnit,
-                    isExpanded: true,
-                    items: ["CM to Meters", "Meters to CM", "KG to Grams", "Grams to KG"]
-                        .map((String value) => DropdownMenuItem(value: value, child: Text(value)))
-                        .toList(),
-                    onChanged: (val) => setState(() => _selectedUnit = val!),
-                  ),
-                  ElevatedButton(
-                    onPressed: _convertUnits,
-                    child: Text("Convert"),
-                  ),
-                  SizedBox(height: 20),
-                  Text(_unitResult, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-
-            // --- About Tab ---
-            Center(
-              child: Text(
-                "Menu ScICal\n\nDeveloped by: [ඔබේ නම]\nVersion: 1.0.0 (Stable)",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-
-            // --- Settings Tab ---
-            Center(
-              child: Text("Dark Mode: System Default"),
-            ),
+            _buildCalculator(),
+            _buildConverter(),
+            _buildAbout(),
           ],
         ),
       ),
     );
   }
 
-  void _convertUnits() {
-    setState(() {
-      if (_selectedUnit == "CM to Meters") _unitResult = "${_unitInput / 100} m";
-      if (_selectedUnit == "Meters to CM") _unitResult = "${_unitInput * 100} cm";
-      if (_selectedUnit == "KG to Grams") _unitResult = "${_unitInput * 1000} g";
-      if (_selectedUnit == "Grams to KG") _unitResult = "${_unitInput / 1000} kg";
-    });
+  Widget _buildCalculator() {
+    return Column(
+      children: [
+        Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.fromLTRB(10, 20, 10, 0),
+          child: Text(equation, style: const TextStyle(fontSize: 38)),
+        ),
+        const Expanded(child: Divider()),
+        _buildButtonGrid(),
+      ],
+    );
   }
 
-  Widget _buildButtons() {
-    var buttons = ["7", "8", "9", "/", "4", "5", "6", "*", "1", "2", "3", "-", "C", "0", "=", "+"];
-    return GridView.builder(
-      itemCount: buttons.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4),
-      itemBuilder: (context, index) {
-        return ElevatedButton(
-          onPressed: () => _buttonPressed(buttons[index]),
-          child: Text(buttons[index], style: TextStyle(fontSize: 24)),
-        );
-      },
+  Widget _buildButtonGrid() {
+    var buttons = ["C", "⌫", "/", "*", "7", "8", "9", "-", "4", "5", "6", "+", "1", "2", "3", "=", "0", "."];
+    return Wrap(
+      children: buttons.map((btn) => SizedBox(
+        width: MediaQuery.of(context).size.width / 4,
+        height: 70,
+        child: TextButton(
+          onPressed: () => buttonPressed(btn),
+          child: Text(btn, style: const TextStyle(fontSize: 24, color: Colors.white)),
+        ),
+      )).toList(),
+    );
+  }
+
+  Widget _buildConverter() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          TextField(
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(labelText: "Enter Value"),
+            onChanged: (value) => unitInput = double.tryParse(value) ?? 0,
+          ),
+          const SizedBox(height: 20),
+          DropdownButton<String>(
+            value: selectedUnit,
+            isExpanded: true,
+            dropdownColor: Colors.black,
+            items: ["CM to Meters", "Meters to CM", "KG to Grams", "Grams to KG"]
+                .map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
+            onChanged: (val) => setState(() => selectedUnit = val!),
+          ),
+          ElevatedButton(onPressed: convertUnits, child: const Text("Convert")),
+          const SizedBox(height: 20),
+          Text(unitResult, style: const TextStyle(fontSize: 24, color: Colors.blueAccent)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAbout() {
+    return const Center(
+      child: Text("Menu ScICal\nDeveloped by: Menul19", textAlign: TextAlign.center, style: TextStyle(fontSize: 20)),
     );
   }
 }
