@@ -25,53 +25,59 @@ class _ScientificCalcAppState extends State<ScientificCalcApp> {
       debugShowCheckedModeBanner: false,
       title: 'Menu ScICal Pro',
       themeMode: _themeMode,
-      theme: ThemeData(brightness: Brightness.light, primarySwatch: Colors.blue),
-      darkTheme: ThemeData(brightness: Brightness.dark, scaffoldBackgroundColor: const Color(0xFF17171C)),
-      home: CalculatorScreen(onThemeChanged: _toggleTheme),
+      theme: ThemeData(
+        brightness: Brightness.light,
+        primaryColor: Colors.blueAccent,
+        scaffoldBackgroundColor: Colors.white,
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF17171C),
+      ),
+      home: CalculatorHome(onThemeChanged: _toggleTheme),
     );
   }
 }
 
-class CalculatorScreen extends StatefulWidget {
+class CalculatorHome extends StatefulWidget {
   final Function(bool) onThemeChanged;
-  const CalculatorScreen({super.key, required this.onThemeChanged});
+  const CalculatorHome({super.key, required this.onThemeChanged});
 
   @override
-  State<CalculatorScreen> createState() => _CalculatorScreenState();
+  State<CalculatorHome> createState() => _CalculatorHomeState();
 }
 
-class _CalculatorScreenState extends State<CalculatorScreen> {
+class _CalculatorHomeState extends State<CalculatorHome> {
   String equation = "0";
   String result = "0";
 
-  void buttonPressed(String btnText) {
+  void onBtnClick(String text) {
     setState(() {
-      if (btnText == "AC") {
+      if (text == "AC") {
         equation = "0";
         result = "0";
-      } else if (btnText == "⌫") {
+      } else if (text == "⌫") {
         equation = equation.length > 1 ? equation.substring(0, equation.length - 1) : "0";
-      } else if (btnText == "=") {
-        // සරල ගණනය කිරීම් සඳහා (Manual parsing)
-        result = "Calculated"; 
+      } else if (text == "=") {
+        result = "Result Ready"; // Logic can be expanded here
       } else {
-        equation = equation == "0" ? btnText : equation + btnText;
+        equation = equation == "0" ? text : equation + text;
       }
     });
   }
 
-  Widget buildButton(String btnText, Color btnColor, {Color txtColor = Colors.white}) {
+  Widget calcBtn(String txt, Color col, {Color txtCol = Colors.white}) {
     return Expanded(
       child: Container(
-        margin: const EdgeInsets.all(5),
+        margin: const EdgeInsets.all(6),
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: btnColor,
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            backgroundColor: col,
+            padding: const EdgeInsets.symmetric(vertical: 22),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
-          onPressed: () => buttonPressed(btnText),
-          child: Text(btnText, style: TextStyle(fontSize: 18, color: txtColor, fontWeight: FontWeight.bold)),
+          onPressed: () => onBtnClick(txt),
+          child: Text(txt, style: TextStyle(fontSize: 18, color: txtCol, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -86,7 +92,8 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => SettingsScreen(isDark: isDark, onThemeChanged: widget.onThemeChanged))),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => 
+              SettingsPage(isDark: isDark, onThemeChanged: widget.onThemeChanged))),
           )
         ],
       ),
@@ -94,53 +101,45 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         children: [
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               alignment: Alignment.bottomRight,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(equation, style: TextStyle(fontSize: 24, color: isDark ? Colors.grey : Colors.black54)),
-                  const SizedBox(height: 10),
-                  Text(result, style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
+                  Text(equation, style: TextStyle(fontSize: 26, color: isDark ? Colors.grey : Colors.black54)),
+                  const SizedBox(height: 12),
+                  Text(result, style: const TextStyle(fontSize: 50, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
           ),
           const Divider(),
-          _buildButtonLayout(isDark),
+          Column(
+            children: [
+              Row(children: [calcBtn("sin", Colors.blue), calcBtn("cos", Colors.blue), calcBtn("tan", Colors.blue), calcBtn("/", Colors.orange)]),
+              Row(children: [calcBtn("7", isDark ? Colors.grey[850]! : Colors.grey[300]!, txtCol: isDark ? Colors.white : Colors.black), calcBtn("8", isDark ? Colors.grey[850]! : Colors.grey[300]!, txtCol: isDark ? Colors.white : Colors.black), calcBtn("9", isDark ? Colors.grey[850]! : Colors.grey[300]!, txtCol: isDark ? Colors.white : Colors.black), calcBtn("*", Colors.orange)]),
+              Row(children: [calcBtn("4", isDark ? Colors.grey[850]! : Colors.grey[300]!, txtCol: isDark ? Colors.white : Colors.black), calcBtn("5", isDark ? Colors.grey[850]! : Colors.grey[300]!, txtCol: isDark ? Colors.white : Colors.black), calcBtn("6", isDark ? Colors.grey[850]! : Colors.grey[300]!, txtCol: isDark ? Colors.white : Colors.black), calcBtn("-", Colors.orange)]),
+              Row(children: [calcBtn("1", isDark ? Colors.grey[850]! : Colors.grey[300]!, txtCol: isDark ? Colors.white : Colors.black), calcBtn("2", isDark ? Colors.grey[850]! : Colors.grey[300]!, txtCol: isDark ? Colors.white : Colors.black), calcBtn("3", isDark ? Colors.grey[850]! : Colors.grey[300]!, txtCol: isDark ? Colors.white : Colors.black), calcBtn("+", Colors.orange)]),
+              Row(children: [calcBtn("AC", Colors.redAccent), calcBtn("0", isDark ? Colors.grey[850]! : Colors.grey[300]!, txtCol: isDark ? Colors.white : Colors.black), calcBtn("⌫", Colors.orange), calcBtn("=", Colors.green)]),
+            ],
+          )
         ],
       ),
     );
   }
-
-  Widget _buildButtonLayout(bool isDark) {
-    Color numBg = isDark ? Colors.grey[850]! : Colors.grey[300]!;
-    Color txtColor = isDark ? Colors.white : Colors.black;
-
-    return Column(
-      children: [
-        Row(children: [buildButton("sin", Colors.blue), buildButton("cos", Colors.blue), buildButton("tan", Colors.blue), buildButton("√", Colors.blue)]),
-        Row(children: [buildButton("AC", Colors.redAccent), buildButton("⌫", Colors.orange), buildButton("%", Colors.grey), buildButton("/", Colors.blue)]),
-        Row(children: [buildButton("7", numBg, txtColor: txtColor), buildButton("8", numBg, txtColor: txtColor), buildButton("9", numBg, txtColor: txtColor), buildButton("*", Colors.blue)]),
-        Row(children: [buildButton("4", numBg, txtColor: txtColor), buildButton("5", numBg, txtColor: txtColor), buildButton("6", numBg, txtColor: txtColor), buildButton("-", Colors.blue)]),
-        Row(children: [buildButton("1", numBg, txtColor: txtColor), buildButton("2", numBg, txtColor: txtColor), buildButton("3", numBg, txtColor: txtColor), buildButton("+", Colors.blue)]),
-        Row(children: [buildButton(".", numBg, txtColor: txtColor), buildButton("0", numBg, txtColor: txtColor), buildButton("(", numBg, txtColor: txtColor), buildButton("=", Colors.green)]),
-      ],
-    );
-  }
 }
 
-class SettingsScreen extends StatelessWidget {
+class SettingsPage extends StatelessWidget {
   final bool isDark;
   final Function(bool) onThemeChanged;
-  const SettingsScreen({super.key, required this.isDark, required this.onThemeChanged});
+  const SettingsPage({super.key, required this.isDark, required this.onThemeChanged});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Settings")),
-      body: Column(
+      body: ListView(
         children: [
           SwitchListTile(
             title: const Text("Dark Mode"),
@@ -149,7 +148,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const Divider(),
           const ListTile(leading: Icon(Icons.person), title: Text("Developer"), subtitle: Text("Menul19")),
-          const ListTile(leading: Icon(Icons.info), title: Text("Version"), subtitle: Text("3.0.0 Stable")),
+          const ListTile(leading: Icon(Icons.verified), title: Text("Version"), subtitle: Text("4.0.0 Stable Edition")),
         ],
       ),
     );
