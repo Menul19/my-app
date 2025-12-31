@@ -1,7 +1,7 @@
 import customtkinter as ctk
 import math
 
-# UI සැකසුම්
+# UI සහ තේමාව සැකසීම
 ctk.set_appearance_mode("dark") 
 ctk.set_default_color_theme("blue")
 
@@ -10,29 +10,29 @@ class MenuScICal(ctk.CTk):
         super().__init__()
 
         # Window Settings
-        self.title("Menu ScICal - Pro")
-        self.geometry("450x720")
+        self.title("Menu ScICal")
+        self.geometry("450x750")
         self.resizable(False, False)
 
-        # Main Screen (Display)
+        # ප්‍රධාන තිරය (Display)
         self.result_var = ctk.StringVar(value="0")
         self.entry = ctk.CTkEntry(self, textvariable=self.result_var, font=("Arial", 32), 
-                                 height=75, corner_radius=10, justify="right")
+                                 height=80, corner_radius=12, justify="right")
         self.entry.pack(fill="x", padx=20, pady=20)
 
-        # Tab System
+        # Tab පද්ධතිය
         self.tabview = ctk.CTkTabview(self, corner_radius=15)
         self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.tabview.add("Calculator")
         self.tabview.add("Unit Converter")
-        self.tabview.add("About")
         self.tabview.add("Settings")
+        self.tabview.add("About")
 
         self.setup_calculator()
         self.setup_unit_converter()
-        self.setup_about()
         self.setup_settings()
+        self.setup_about()
 
     # --- Scientific Calculator ---
     def setup_calculator(self):
@@ -51,91 +51,102 @@ class MenuScICal(ctk.CTk):
         r, c = 0, 0
         for btn in buttons:
             color = "#3b3b3b" if btn not in ['=', 'C'] else ("#1f6aa5" if btn == "=" else "#942d2d")
-            ctk.CTkButton(frame, text=btn, width=85, height=60, corner_radius=8,
-                          fg_color=color, font=("Arial", 18, "bold"),
-                          command=lambda x=btn: self.calc_logic(x)).grid(row=r, column=c, padx=5, pady=5)
+            ctk.CTkButton(frame, text=btn, width=90, height=65, corner_radius=10,
+                          fg_color=color, font=("Arial", 20, "bold"),
+                          command=lambda x=btn: self.on_calc(x)).grid(row=r, column=c, padx=5, pady=5)
             c += 1
             if c > 3: c = 0; r += 1
 
-    def calc_logic(self, char):
+    def on_calc(self, char):
         curr = self.result_var.get()
         if char == "C": self.result_var.set("0")
         elif char == "=":
             try:
                 # Math functions optimization
                 expr = curr.replace('sin', 'math.sin(math.radians').replace('cos', 'math.cos(math.radians').replace('tan', 'math.tan(math.radians')
-                if '(' in expr: expr += ')' * (expr.count('(') - expr.count(')'))
+                # වරහන් සම්පූර්ණ කිරීම
+                expr += ')' * (expr.count('(') - expr.count(')'))
                 self.result_var.set(str(round(eval(expr), 8)))
             except: self.result_var.set("Error")
         else:
             self.result_var.set(char if curr == "0" else curr + char)
 
-    # --- Full Unit Converter (No Currency Errors) ---
+    # --- Full Unit Converter (Offline - No API Required) ---
     def setup_unit_converter(self):
         tab = self.tabview.tab("Unit Converter")
-        ctk.CTkLabel(tab, text="Select Conversion Type", font=("Arial", 16, "bold")).pack(pady=10)
         
-        self.unit_input = ctk.CTkEntry(tab, placeholder_text="Enter Value", width=250)
-        self.unit_input.pack(pady=10)
+        ctk.CTkLabel(tab, text="Advanced Unit Converter", font=("Arial", 18, "bold")).pack(pady=10)
         
-        self.unit_type = ctk.CTkComboBox(tab, values=[
+        self.unit_val = ctk.CTkEntry(tab, placeholder_text="Enter Value", width=280, height=40)
+        self.unit_val.pack(pady=10)
+        
+        self.unit_list = ctk.CTkComboBox(tab, values=[
             "Length: CM to Meters", "Length: Meters to CM", 
             "Length: KM to Miles", "Length: Miles to KM",
             "Weight: KG to Grams", "Weight: Grams to KG",
             "Temp: Celsius to Fahrenheit", "Temp: Fahrenheit to Celsius",
-            "Data: GB to MB", "Data: MB to KB"
-        ], width=250)
-        self.unit_type.set("Length: CM to Meters")
-        self.unit_type.pack(pady=10)
+            "Volume: Liters to ML", "Volume: ML to Liters"
+        ], width=280, height=40)
+        self.unit_list.set("Length: CM to Meters")
+        self.unit_list.pack(pady=10)
         
-        ctk.CTkButton(tab, text="Convert", command=self.unit_logic, fg_color="#2ecc71", text_color="black").pack(pady=10)
-        self.unit_res = ctk.CTkLabel(tab, text="Result: --", font=("Arial", 18, "bold"), text_color="#3498db")
-        self.unit_res.pack(pady=20)
+        ctk.CTkButton(tab, text="Convert Now", fg_color="#2ecc71", text_color="black", 
+                      font=("Arial", 16, "bold"), command=self.do_unit_logic).pack(pady=15)
+        
+        self.res_display = ctk.CTkLabel(tab, text="Result: --", font=("Arial", 20, "bold"), text_color="#3498db")
+        self.res_display.pack(pady=20)
 
-    def unit_logic(self):
+    def do_unit_logic(self):
         try:
-            val = float(self.unit_input.get())
-            mode = self.unit_type.get()
+            val = float(self.unit_val.get())
+            mode = self.unit_list.get()
             res, unit = 0, ""
 
             if "CM to Meters" in mode: res, unit = val / 100, "m"
             elif "Meters to CM" in mode: res, unit = val * 100, "cm"
-            elif "KM to Miles" in mode: res, unit = val * 0.621, "mi"
-            elif "Miles to KM" in mode: res, unit = val / 0.621, "km"
+            elif "KM to Miles" in mode: res, unit = val * 0.6213, "mi"
+            elif "Miles to KM" in mode: res, unit = val / 0.6213, "km"
             elif "KG to Grams" in mode: res, unit = val * 1000, "g"
             elif "Grams to KG" in mode: res, unit = val / 1000, "kg"
             elif "Celsius to Fahrenheit" in mode: res, unit = (val * 9/5) + 32, "°F"
             elif "Fahrenheit to Celsius" in mode: res, unit = (val - 32) * 5/9, "°C"
-            elif "GB to MB" in mode: res, unit = val * 1024, "MB"
-            elif "MB to KB" in mode: res, unit = val * 1024, "KB"
+            elif "Liters to ML" in mode: res, unit = val * 1000, "ml"
+            elif "ML to Liters" in mode: res, unit = val / 1000, "L"
 
-            self.unit_res.configure(text=f"Result: {round(res, 4)} {unit}", text_color="#3498db")
-        except: self.unit_res.configure(text="Invalid Input!", text_color="#e74c3c")
+            self.res_display.configure(text=f"Result: {round(res, 4)} {unit}", text_color="#3498db")
+        except:
+            self.res_display.configure(text="Invalid Input!", text_color="#e74c3c")
 
     # --- About Section ---
     def setup_about(self):
         tab = self.tabview.tab("About")
-        info = """
+        my_info = """
         APPLICATION: Menu ScICal
         --------------------------
         Developer: [ඔබේ නම මෙතන දාන්න]
-        Version: 2.5.0 (Stable Build)
+        Version: 3.0.0 (Stable Build)
         
-        * ලස්සන UI පද්ධතිය
-        * සියලුම ඒකක පරිවර්තන (Unit Conversions)
-        * විද්‍යාත්මක ගණනය කිරීම්
-        * Light / Dark Mode සහාය
+        Features:
+        * No API Errors (Offline)
+        * Scientific Calc (Sin, Cos, Tan)
+        * All Major Unit Conversions
+        * Light / Dark Mode Toggle
         
-        කිසිදු Error එකක් නොමැතිව Offline ක්‍රියා කරයි.
+        Developed with CustomTkinter.
         """
-        ctk.CTkLabel(tab, text=info, justify="left", font=("Arial", 14)).pack(pady=30)
+        ctk.CTkLabel(tab, text=my_info, justify="left", font=("Arial", 15)).pack(pady=30)
 
     # --- Settings ---
     def setup_settings(self):
         tab = self.tabview.tab("Settings")
-        ctk.CTkLabel(tab, text="Change Theme", font=("Arial", 16)).pack(pady=20)
-        ctk.CTkSegmentedButton(tab, values=["Dark", "Light"], 
-                               command=lambda m: ctk.set_appearance_mode(m.lower())).pack()
+        ctk.CTkLabel(tab, text="UI Appearance Mode", font=("Arial", 16)).pack(pady=20)
+        
+        def switch_mode(mode):
+            ctk.set_appearance_mode(mode.lower())
+
+        seg_btn = ctk.CTkSegmentedButton(tab, values=["Dark", "Light"], command=switch_mode)
+        seg_btn.set("Dark")
+        seg_btn.pack(pady=10)
 
 if __name__ == "__main__":
     app = MenuScICal()
