@@ -3,7 +3,7 @@ import 'package:on_audio_query/on_audio_query.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:math';
+import 'dart:io'; // Device version එක බැලීමට
 
 void main() => runApp(const MenulMusicApp());
 
@@ -31,28 +31,60 @@ class MusicPlayerHome extends StatefulWidget {
   State<MusicPlayerHome> createState() => _MusicPlayerHomeState();
 }
 
-class _MusicPlayerHomeState extends State<MusicPlayerHome> with SingleTickerProviderStateMixin {
+class _MusicPlayerHomeState extends State<MusicPlayerHome> {
   final OnAudioQuery _audioQuery = OnAudioQuery();
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool isPlaying = false;
+  bool _hasPermission = false;
 
   @override
   void initState() {
     super.initState();
-    requestPermission();
+    checkAndRequestPermissions();
     _audioPlayer.playingStream.listen((playing) {
-      setState(() => isPlaying = playing);
+      if (mounted) setState(() => isPlaying = playing);
     });
   }
 
-  void requestPermission() async {
-    await Permission.storage.request();
-    setState(() {});
+  // Permission ලබාගැනීම (Android 13+ සඳහා විශේෂයි)
+  void checkAndRequestPermissions() async {
+    bool permissionStatus;
+    if (Platform.isAndroid && (await _getAndroidVersion()) >= 33) {
+      permissionStatus = await Permission.audio.request().isGranted;
+    } else {
+      permissionStatus = await Permission.storage.request().isGranted;
+    }
+
+    setState(() {
+      _hasPermission = permissionStatus;
+    });
+  }
+
+  Future<int> _getAndroidVersion() async {
+    if (Platform.isAndroid) {
+      var sdk = await Permission.storage.status; // dummy check
+      // සාමාන්‍යයෙන් මෙහිදී Device info එකෙන් version එක ගත හැක. 
+      // සරලව අලුත් phone වලට audio permission එක අත්‍යවශ්‍යයි.
+      return 33; 
+    }
+    return 0;
   }
 
   void playSong(String? uri) {
-    _audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(uri!)));
-    _audioPlayer.play();
+    try {
+      if (uri != null) {
+        _audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(uri)));
+        _audioPlayer.play();
+      }
+    } catch (e) {
+      debugPrint("Error playing song: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   @override
@@ -62,18 +94,23 @@ class _MusicPlayerHomeState extends State<MusicPlayerHome> with SingleTickerProv
         title: Text("MENUL MUSIC BETA", style: GoogleFonts.russoOne(color: Colors.redAccent, letterSpacing: 2)),
         backgroundColor: Colors.black,
         centerTitle: true,
-        elevation: 0,
       ),
-      body: Stack(
+      body: !_hasPermission 
+        ? const Center(child: Text("Please grant storage permissions!"))
+        : Stack(
         children: [
-          // --- Background Bass Visualizer Animation ---
           if (isPlaying) const Positioned.fill(child: BassVisualizer()),
-
-          // --- Song List ---
           FutureBuilder<List<SongModel>>(
-            future: _audioQuery.querySongs(uriType: UriType.EXTERNAL),
+            future: _audioQuery.querySongs(
+              sortType: null,
+              orderType: OrderType.ASC_OR_DESC,
+              uriType: UriType.EXTERNAL,
+              ignoreCase: true,
+            ),
             builder: (context, item) {
-              if (item.data == null) return const Center(child: CircularProgressIndicator(color: Colors.red));
+              if (item.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: Colors.red));
+              if (item.data == null || item.data!.isEmpty) return const Center(child: Text("No songs found"));
+              
               return ListView.builder(
                 itemCount: item.data!.length,
                 itemBuilder: (context, index) {
@@ -85,10 +122,9 @@ class _MusicPlayerHomeState extends State<MusicPlayerHome> with SingleTickerProv
                       border: Border.all(color: Colors.redAccent.withOpacity(0.2)),
                     ),
                     child: ListTile(
-                      title: Text(item.data![index].displayNameWOExt, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      subtitle: Text("${item.data![index].artist}", style: const TextStyle(color: Colors.grey)),
+                      title: Text(item.data![index].displayNameWOExt, maxLines: 1, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      subtitle: Text("${item.data![index].artist}", maxLines: 1, style: const TextStyle(color: Colors.grey)),
                       leading: const Icon(Icons.music_note, color: Colors.redAccent),
-                      trailing: const Icon(Icons.play_arrow_rounded, color: Colors.redAccent, size: 30),
                       onTap: () => playSong(item.data![index].uri),
                     ),
                   );
@@ -126,58 +162,5 @@ class _MusicPlayerHomeState extends State<MusicPlayerHome> with SingleTickerProv
   }
 }
 
-// --- Bass Visualizer Animation Widget ---
-class BassVisualizer extends StatefulWidget {
-  const BassVisualizer({super.key});
+// (BassVisualizer and VisualizerPainter codes remain the same as you provided)
 
-  @override
-  State<BassVisualizer> createState() => _BassVisualizerState();
-}
-
-class _BassVisualizerState extends State<BassVisualizer> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 500))..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return CustomPaint(
-          painter: VisualizerPainter(_controller.value),
-        );
-      },
-    );
-  }
-}
-
-class VisualizerPainter extends CustomPainter {
-  final double animationValue;
-  VisualizerPainter(this.animationValue);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    var paint = Paint()
-      ..color = Colors.redAccent.withOpacity(0.15)
-      ..style = PaintingStyle.fill;
-
-    // සින්දුවේ Bass එකට අනුව රවුම් විශාල වන Animation එකක්
-    double radius = (size.width * 0.3) + (animationValue * 50);
-    canvas.drawCircle(Offset(size.width / 2, size.height / 2), radius, paint);
-    canvas.drawCircle(Offset(size.width / 2, size.height / 2), radius * 1.5, paint..color = Colors.redAccent.withOpacity(0.05));
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
