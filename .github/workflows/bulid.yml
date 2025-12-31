@@ -5,12 +5,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.22.0' # මම මෙතන අලුත් version එකක් දැම්මා
           channel: 'stable'
+
+      - name: Create Android Project
+        run: |
+          flutter create . --platforms android
+          # පරණ main.dart එක ආරක්ෂා කරගන්න මේක කරමු
+          git checkout lib/main.dart
+
       - run: flutter pub get
       - run: flutter build apk --release --no-tree-shake-icons
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: my-app-apk
           path: build/app/outputs/flutter-apk/app-release.apk
