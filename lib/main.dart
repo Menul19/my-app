@@ -1,150 +1,169 @@
-import tkinter as tk
-from tkinter import messagebox
 import customtkinter as ctk
 import math
-import requests # Live currency data ලබා ගැනීමට
 
-# UI සැකසුම්
+# UI පෙනුම සැකසීම
 ctk.set_appearance_mode("dark") 
 ctk.set_default_color_theme("blue")
 
-class ScientificCalculator(ctk.CTk):
+class MenuScICal(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Menu ScICal")
+        # App Window Settings
+        self.title("Menu ScICal - Pro Edition")
         self.geometry("450x700")
+        self.resizable(False, False)
 
-        # Display screen
-        self.result_var = tk.StringVar(value="0")
-        self.entry = ctk.CTkEntry(self, textvariable=self.result_var, font=("Arial", 28), height=60, justify="right")
+        # Display Screen
+        self.result_var = ctk.StringVar(value="0")
+        self.entry = ctk.CTkEntry(self, textvariable=self.result_var, font=("Arial", 32), 
+                                 height=70, corner_radius=10, justify="right")
         self.entry.pack(fill="x", padx=20, pady=20)
 
-        # Tab View
-        self.tabview = ctk.CTkTabview(self)
+        # Tab System
+        self.tabview = ctk.CTkTabview(self, corner_radius=15)
         self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.tabview.add("Calculator")
-        self.tabview.add("Converter")
-        self.tabview.add("Currency") # අලුතින් එක් කළ කොටස
+        self.tabview.add("Unit Converter")
         self.tabview.add("Settings")
         self.tabview.add("About")
 
         self.setup_calculator()
-        self.setup_converter()
-        self.setup_currency()
+        self.setup_unit_converter()
         self.setup_settings()
         self.setup_about()
 
-    # --- Scientific Calculator ---
+    # --- Scientific Calculator Section ---
     def setup_calculator(self):
+        tab = self.tabview.tab("Calculator")
         buttons = [
-            '7', '8', '9', '/', 'sin',
-            '4', '5', '6', '*', 'cos',
-            '1', '2', '3', '-', 'tan',
-            '0', '.', '=', '+', 'C'
+            'sin', 'cos', 'tan', 'C',
+            '7', '8', '9', '/',
+            '4', '5', '6', '*',
+            '1', '2', '3', '-',
+            '0', '.', '=', '+'
         ]
-        frame = self.tabview.tab("Calculator")
-        grid_frame = ctk.CTkFrame(frame)
-        grid_frame.pack(pady=10)
+        
+        frame = ctk.CTkFrame(tab, fg_color="transparent")
+        frame.pack(expand=True)
 
         r, c = 0, 0
         for btn_text in buttons:
-            ctk.CTkButton(grid_frame, text=btn_text, width=75, height=55, 
-                          command=lambda x=btn_text: self.on_calc_click(x)).grid(row=r, column=c, padx=5, pady=5)
+            cmd = lambda x=btn_text: self.on_button_click(x)
+            color = "#3b3b3b" if btn_text not in ['=', 'C'] else ("#1f6aa5" if btn_text == "=" else "#942d2d")
+            
+            ctk.CTkButton(frame, text=btn_text, width=85, height=60, corner_radius=8,
+                          fg_color=color, font=("Arial", 18, "bold"),
+                          command=cmd).grid(row=r, column=c, padx=5, pady=5)
             c += 1
-            if c > 4: c = 0; r += 1
+            if c > 3:
+                c = 0
+                r += 1
 
-    def on_calc_click(self, char):
-        curr = self.result_var.get()
-        if char == "=":
+    def on_button_click(self, char):
+        current = self.result_var.get()
+        if char == "C":
+            self.result_var.set("0")
+        elif char == "=":
             try:
                 # Math functions handle කිරීම
-                res = eval(curr.replace('sin', 'math.sin').replace('cos', 'math.cos').replace('tan', 'math.tan'))
-                self.result_var.set(str(round(res, 4)))
-            except: messagebox.showerror("Error", "ගණනය කිරීම වැරදියි")
-        elif char == "C": self.result_var.set("0")
+                expr = current.replace('sin', 'math.sin(math.radians')
+                expr = expr.replace('cos', 'math.cos(math.radians')
+                expr = expr.replace('tan', 'math.tan(math.radians')
+                
+                # වරහන් ගණන පරීක්ෂා කර සම්පූර්ණ කිරීම
+                open_b = expr.count('(')
+                close_b = expr.count(')')
+                if open_b > close_b:
+                    expr += ')' * (open_b - close_b)
+                
+                result = eval(expr)
+                self.result_var.set(str(round(result, 8)))
+            except:
+                self.result_var.set("Error")
         else:
-            if curr == "0": self.result_var.set(char)
-            else: self.result_var.set(curr + char)
+            if current == "0":
+                self.result_var.set(char)
+            else:
+                self.result_var.set(current + char)
 
-    # --- Unit Converter (cm to m etc.) ---
-    def setup_converter(self):
-        frame = self.tabview.tab("Converter")
-        ctk.CTkLabel(frame, text="Unit Converter", font=("Arial", 16, "bold")).pack(pady=10)
+    # --- Full Unit Converter Section ---
+    def setup_unit_converter(self):
+        tab = self.tabview.tab("Unit Converter")
         
-        self.unit_val = ctk.CTkEntry(frame, placeholder_text="Enter Value")
-        self.unit_val.pack(pady=10)
+        ctk.CTkLabel(tab, text="Advanced Unit Converter", font=("Arial", 18, "bold")).pack(pady=10)
         
-        self.unit_choice = ctk.CTkSegmentedButton(frame, values=["cm to m", "m to cm", "kg to g"])
-        self.unit_choice.set("cm to m")
-        self.unit_choice.pack(pady=10)
+        # අගය ඇතුළත් කරන කොටස
+        self.unit_input = ctk.CTkEntry(tab, placeholder_text="Enter Value", width=250)
+        self.unit_input.pack(pady=10)
         
-        ctk.CTkButton(frame, text="Convert", command=self.unit_convert_logic).pack(pady=10)
-        self.unit_res_label = ctk.CTkLabel(frame, text="Result: -", font=("Arial", 14))
-        self.unit_res_label.pack(pady=10)
+        # වර්ගය තේරීමට (Dropdown)
+        self.unit_type = ctk.CTkComboBox(tab, values=[
+            "CM to Meters", "Meters to CM", 
+            "KG to Grams", "Grams to KG",
+            "Celsius to Fahrenheit", "Fahrenheit to Celsius",
+            "Km to Miles", "Miles to Km"
+        ], width=250)
+        self.unit_type.set("CM to Meters")
+        self.unit_type.pack(pady=10)
+        
+        ctk.CTkButton(tab, text="Convert Now", command=self.do_conversion, fg_color="#2ecc71", text_color="black").pack(pady=10)
+        
+        self.unit_output = ctk.CTkLabel(tab, text="Result: --", font=("Arial", 18, "bold"), text_color="#3498db")
+        self.unit_output.pack(pady=20)
 
-    def unit_convert_logic(self):
+    def do_conversion(self):
         try:
-            val = float(self.unit_val.get())
-            mode = self.unit_choice.get()
-            if mode == "cm to m": res = val / 100
-            elif mode == "m to cm": res = val * 100
-            elif mode == "kg to g": res = val * 1000
-            self.unit_res_label.configure(text=f"Result: {res}")
-        except: self.unit_res_label.configure(text="Invalid Input")
+            val = float(self.unit_input.get())
+            mode = self.unit_type.get()
+            res = 0
+            unit = ""
 
-    # --- World Currency Converter (Daily Updates) ---
-    def setup_currency(self):
-        frame = self.tabview.tab("Currency")
-        ctk.CTkLabel(frame, text="Live Currency (Base: USD)", font=("Arial", 16, "bold")).pack(pady=10)
-        
-        self.curr_amount = ctk.CTkEntry(frame, placeholder_text="Amount in USD")
-        self.curr_amount.pack(pady=10)
+            if mode == "CM to Meters": res = val / 100; unit = "m"
+            elif mode == "Meters to CM": res = val * 100; unit = "cm"
+            elif mode == "KG to Grams": res = val * 1000; unit = "g"
+            elif mode == "Grams to KG": res = val / 1000; unit = "kg"
+            elif mode == "Celsius to Fahrenheit": res = (val * 9/5) + 32; unit = "°F"
+            elif mode == "Fahrenheit to Celsius": res = (val - 32) * 5/9; unit = "°C"
+            elif mode == "Km to Miles": res = val * 0.621371; unit = "miles"
+            elif mode == "Miles to Km": res = val / 0.621371; unit = "km"
 
-        self.target_curr = ctk.CTkComboBox(frame, values=["LKR", "INR", "EUR", "GBP", "AUD"])
-        self.target_curr.set("LKR")
-        self.target_curr.pack(pady=10)
-
-        ctk.CTkButton(frame, text="Get Live Rate", command=self.get_live_currency).pack(pady=10)
-        self.curr_res_label = ctk.CTkLabel(frame, text="Converted Amount: -", font=("Arial", 14))
-        self.curr_res_label.pack(pady=10)
-
-    def get_live_currency(self):
-        try:
-            amount = float(self.curr_amount.get())
-            target = self.target_curr.get()
-            # Free API for currency rates
-            url = f"https://api.exchangerate-api.com/v4/latest/USD"
-            response = requests.get(url).json()
-            rate = response['rates'][target]
-            converted = amount * rate
-            self.curr_res_label.configure(text=f"{amount} USD = {converted:.2f} {target}")
+            self.unit_output.configure(text=f"Result: {round(res, 4)} {unit}")
         except:
-            messagebox.showerror("Network Error", "අන්තර්ජාලය පරීක්ෂා කරන්න!")
+            self.unit_output.configure(text="Invalid Input!", text_color="#e74c3c")
 
-    # --- Settings ---
+    # --- Settings (Dark/Light Mode) ---
     def setup_settings(self):
-        frame = self.tabview.tab("Settings")
-        ctk.CTkLabel(frame, text="UI Theme Settings", font=("Arial", 16)).pack(pady=20)
-        ctk.CTkButton(frame, text="Light Mode", fg_color="gray", command=lambda: ctk.set_appearance_mode("light")).pack(pady=10)
-        ctk.CTkButton(frame, text="Dark Mode", fg_color="#242424", command=lambda: ctk.set_appearance_mode("dark")).pack(pady=10)
+        tab = self.tabview.tab("Settings")
+        ctk.CTkLabel(tab, text="Switch Theme Mode", font=("Arial", 18, "bold")).pack(pady=20)
+        
+        def change_mode(choice):
+            ctk.set_appearance_mode(choice.lower())
+
+        mode_switch = ctk.CTkSegmentedButton(tab, values=["Dark", "Light"], command=change_mode)
+        mode_switch.set("Dark")
+        mode_switch.pack(pady=10)
 
     # --- About Section ---
     def setup_about(self):
-        frame = self.tabview.tab("About")
-        info = f"""
-        APP: Menu ScICal 
+        tab = self.tabview.tab("About")
+        about_info = """
+        APPLICATION: Menu ScICal
         --------------------------
-        Developer: [Menul Mihisara]
-        Status: Professional Edition
-        Features: Scientific Calc, Unit & 
-        Live Currency Converter.
+        Developer: [ඔබේ නම මෙතන දාන්න]
+        Version: 2.0.0 (Pro)
+        
+        ඇතුළත් කර ඇති පහසුකම්:
+        * Scientific Calculation (sin, cos, tan)
+        * All Major Unit Conversions
+        * Light / Dark Mode Support
+        * Offline Stability (No Errors)
         
         © 2024 All Rights Reserved.
         """
-        ctk.CTkLabel(frame, text=info, justify="left", font=("Arial", 13)).pack(pady=30)
+        ctk.CTkLabel(tab, text=about_info, justify="left", font=("Arial", 14)).pack(pady=30)
 
 if __name__ == "__main__":
-    app = ScientificCalculator()
+    app = MenuScICal()
     app.mainloop()
