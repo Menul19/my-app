@@ -1,97 +1,150 @@
-import 'package:flutter/material.dart';
+import tkinter as tk
+from tkinter import messagebox
+import customtkinter as ctk
+import math
+import requests # Live currency data ලබා ගැනීමට
 
-void main() => runApp(const CalculatorApp());
+# UI සැකසුම්
+ctk.set_appearance_mode("dark") 
+ctk.set_default_color_theme("blue")
 
-class CalculatorApp extends StatelessWidget {
-  const CalculatorApp({super.key});
+class ScientificCalculator(ctk.CTk):
+    def __init__(self):
+        super().__init__()
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const CalculatorScreen(),
-    );
-  }
-}
+        self.title("Menu ScICal")
+        self.geometry("450x700")
 
-class CalculatorScreen extends StatefulWidget {
-  const CalculatorScreen({super.key});
+        # Display screen
+        self.result_var = tk.StringVar(value="0")
+        self.entry = ctk.CTkEntry(self, textvariable=self.result_var, font=("Arial", 28), height=60, justify="right")
+        self.entry.pack(fill="x", padx=20, pady=20)
 
-  @override
-  State<CalculatorScreen> createState() => _CalculatorScreenState();
-}
+        # Tab View
+        self.tabview = ctk.CTkTabview(self)
+        self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        self.tabview.add("Calculator")
+        self.tabview.add("Converter")
+        self.tabview.add("Currency") # අලුතින් එක් කළ කොටස
+        self.tabview.add("Settings")
+        self.tabview.add("About")
 
-class _CalculatorScreenState extends State<CalculatorScreen> {
-  String display = '0';
-  double num1 = 0;
-  double num2 = 0;
-  String operand = '';
+        self.setup_calculator()
+        self.setup_converter()
+        self.setup_currency()
+        self.setup_settings()
+        self.setup_about()
 
-  void onButtonClick(String text) {
-    setState(() {
-      if (text == 'C') {
-        display = '0';
-        num1 = 0;
-        num2 = 0;
-        operand = '';
-      } else if (text == '+' || text == '-' || text == 'x' || text == '/') {
-        num1 = double.parse(display);
-        operand = text;
-        display = '0';
-      } else if (text == '=') {
-        num2 = double.parse(display);
-        if (operand == '+') display = (num1 + num2).toString();
-        if (operand == '-') display = (num1 - num2).toString();
-        if (operand == 'x') display = (num1 * num2).toString();
-        if (operand == '/') display = (num1 / num2).toString();
-        operand = '';
-      } else {
-        display = display == '0' ? text : display + text;
-      }
-    });
-  }
+    # --- Scientific Calculator ---
+    def setup_calculator(self):
+        buttons = [
+            '7', '8', '9', '/', 'sin',
+            '4', '5', '6', '*', 'cos',
+            '1', '2', '3', '-', 'tan',
+            '0', '.', '=', '+', 'C'
+        ]
+        frame = self.tabview.tab("Calculator")
+        grid_frame = ctk.CTkFrame(frame)
+        grid_frame.pack(pady=10)
 
-  Widget buildButton(String text, Color color) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            padding: const EdgeInsets.all(24),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          onPressed: () => onButtonClick(text),
-          child: Text(text, style: const TextStyle(fontSize: 24, color: Colors.white)),
-        ),
-      ),
-    );
-  }
+        r, c = 0, 0
+        for btn_text in buttons:
+            ctk.CTkButton(grid_frame, text=btn_text, width=75, height=55, 
+                          command=lambda x=btn_text: self.on_calc_click(x)).grid(row=r, column=c, padx=5, pady=5)
+            c += 1
+            if c > 4: c = 0; r += 1
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Smart Calculator')),
-      body: Column(
-        children: [
-          Expanded(
-            child: Container(
-              alignment: Alignment.bottomRight,
-              padding: const EdgeInsets.all(24),
-              child: Text(display, style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
-            ),
-          ),
-          Column(
-            children: [
-              Row(children: [buildButton('7', Colors.grey), buildButton('8', Colors.grey), buildButton('9', Colors.grey), buildButton('/', Colors.orange)]),
-              Row(children: [buildButton('4', Colors.grey), buildButton('5', Colors.grey), buildButton('6', Colors.grey), buildButton('x', Colors.orange)]),
-              Row(children: [buildButton('1', Colors.grey), buildButton('2', Colors.grey), buildButton('3', Colors.grey), buildButton('-', Colors.orange)]),
-              Row(children: [buildButton('C', Colors.red), buildButton('0', Colors.grey), buildButton('=', Colors.green), buildButton('+', Colors.orange)]),
-            ],
-          )
-        ],
-      ),
-    );
-  }
-}
+    def on_calc_click(self, char):
+        curr = self.result_var.get()
+        if char == "=":
+            try:
+                # Math functions handle කිරීම
+                res = eval(curr.replace('sin', 'math.sin').replace('cos', 'math.cos').replace('tan', 'math.tan'))
+                self.result_var.set(str(round(res, 4)))
+            except: messagebox.showerror("Error", "ගණනය කිරීම වැරදියි")
+        elif char == "C": self.result_var.set("0")
+        else:
+            if curr == "0": self.result_var.set(char)
+            else: self.result_var.set(curr + char)
+
+    # --- Unit Converter (cm to m etc.) ---
+    def setup_converter(self):
+        frame = self.tabview.tab("Converter")
+        ctk.CTkLabel(frame, text="Unit Converter", font=("Arial", 16, "bold")).pack(pady=10)
+        
+        self.unit_val = ctk.CTkEntry(frame, placeholder_text="Enter Value")
+        self.unit_val.pack(pady=10)
+        
+        self.unit_choice = ctk.CTkSegmentedButton(frame, values=["cm to m", "m to cm", "kg to g"])
+        self.unit_choice.set("cm to m")
+        self.unit_choice.pack(pady=10)
+        
+        ctk.CTkButton(frame, text="Convert", command=self.unit_convert_logic).pack(pady=10)
+        self.unit_res_label = ctk.CTkLabel(frame, text="Result: -", font=("Arial", 14))
+        self.unit_res_label.pack(pady=10)
+
+    def unit_convert_logic(self):
+        try:
+            val = float(self.unit_val.get())
+            mode = self.unit_choice.get()
+            if mode == "cm to m": res = val / 100
+            elif mode == "m to cm": res = val * 100
+            elif mode == "kg to g": res = val * 1000
+            self.unit_res_label.configure(text=f"Result: {res}")
+        except: self.unit_res_label.configure(text="Invalid Input")
+
+    # --- World Currency Converter (Daily Updates) ---
+    def setup_currency(self):
+        frame = self.tabview.tab("Currency")
+        ctk.CTkLabel(frame, text="Live Currency (Base: USD)", font=("Arial", 16, "bold")).pack(pady=10)
+        
+        self.curr_amount = ctk.CTkEntry(frame, placeholder_text="Amount in USD")
+        self.curr_amount.pack(pady=10)
+
+        self.target_curr = ctk.CTkComboBox(frame, values=["LKR", "INR", "EUR", "GBP", "AUD"])
+        self.target_curr.set("LKR")
+        self.target_curr.pack(pady=10)
+
+        ctk.CTkButton(frame, text="Get Live Rate", command=self.get_live_currency).pack(pady=10)
+        self.curr_res_label = ctk.CTkLabel(frame, text="Converted Amount: -", font=("Arial", 14))
+        self.curr_res_label.pack(pady=10)
+
+    def get_live_currency(self):
+        try:
+            amount = float(self.curr_amount.get())
+            target = self.target_curr.get()
+            # Free API for currency rates
+            url = f"https://api.exchangerate-api.com/v4/latest/USD"
+            response = requests.get(url).json()
+            rate = response['rates'][target]
+            converted = amount * rate
+            self.curr_res_label.configure(text=f"{amount} USD = {converted:.2f} {target}")
+        except:
+            messagebox.showerror("Network Error", "අන්තර්ජාලය පරීක්ෂා කරන්න!")
+
+    # --- Settings ---
+    def setup_settings(self):
+        frame = self.tabview.tab("Settings")
+        ctk.CTkLabel(frame, text="UI Theme Settings", font=("Arial", 16)).pack(pady=20)
+        ctk.CTkButton(frame, text="Light Mode", fg_color="gray", command=lambda: ctk.set_appearance_mode("light")).pack(pady=10)
+        ctk.CTkButton(frame, text="Dark Mode", fg_color="#242424", command=lambda: ctk.set_appearance_mode("dark")).pack(pady=10)
+
+    # --- About Section ---
+    def setup_about(self):
+        frame = self.tabview.tab("About")
+        info = f"""
+        APP: Menu ScICal 
+        --------------------------
+        Developer: [Menul Mihisara]
+        Status: Professional Edition
+        Features: Scientific Calc, Unit & 
+        Live Currency Converter.
+        
+        © 2024 All Rights Reserved.
+        """
+        ctk.CTkLabel(frame, text=info, justify="left", font=("Arial", 13)).pack(pady=30)
+
+if __name__ == "__main__":
+    app = ScientificCalculator()
+    app.mainloop()
