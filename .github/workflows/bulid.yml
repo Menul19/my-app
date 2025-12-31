@@ -9,13 +9,12 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0' # මම මෙතන අලුත් version එකක් දැම්මා
+          flutter-version: '3.22.0'
           channel: 'stable'
 
       - name: Create Android Project
         run: |
-          flutter create . --platforms android
-          # පරණ main.dart එක ආරක්ෂා කරගන්න මේක කරමු
+          flutter create --project-name my_app . --platforms android
           git checkout lib/main.dart
 
       - run: flutter pub get
