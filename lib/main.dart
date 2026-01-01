@@ -31,11 +31,9 @@ class MenulMusicPro extends StatelessWidget {
   }
 }
 
-/* ---------- SPLASH ---------- */
-
+/* ---------------- SPLASH ---------------- */
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
-
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
@@ -65,11 +63,9 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-/* ---------- PLAYER ---------- */
-
+/* ---------------- PLAYER ---------------- */
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
-
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
@@ -91,7 +87,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
     bool permission = await _audioQuery.permissionsRequest();
     if (!permission) return;
 
-    _songs = await _audioQuery.querySongs();
+    _songs = await _audioQuery.querySongs(
+      uriType: UriType.EXTERNAL,
+      ignoreCase: true,
+      sortType: SongSortType.DATE_ADDED,
+      orderType: OrderType.DESC_OR_GREATER,
+    );
+
     setState(() {});
   }
 
@@ -146,6 +148,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // SEEK BAR
             StreamBuilder<Duration>(
               stream: _player.positionStream,
               builder: (_, snapshot) {
@@ -153,36 +156,104 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 final duration = _player.duration ?? Duration.zero;
                 return Slider(
                   min: 0,
-                  max: duration.inSeconds.toDouble().clamp(1, double.infinity),
+                  max: duration.inSeconds.toDouble() == 0
+                      ? 1
+                      : duration.inSeconds.toDouble(),
                   value: position.inSeconds
                       .toDouble()
                       .clamp(0, duration.inSeconds.toDouble()),
-                  onChanged: (v) =>
-                      _player.seek(Duration(seconds: v.toInt())),
+                  onChanged: (v) {
+                    _player.seek(Duration(seconds: v.toInt()));
+                  },
                 );
               },
             ),
+
+            // CONTROLS
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
+                // SHUFFLE
                 IconButton(
-                    icon: const Icon(Icons.skip_previous),
-                    onPressed: _previous),
+                  icon: Icon(
+                    Icons.shuffle,
+                    color: _player.shuffleModeEnabled
+                        ? Colors.green
+                        : Colors.grey,
+                  ),
+                  onPressed: () async {
+                    bool enabled = !_player.shuffleModeEnabled;
+                    await _player.setShuffleModeEnabled(enabled);
+                    setState(() {});
+                  },
+                ),
+
+                // PREVIOUS
                 IconButton(
+                  icon: const Icon(Icons.skip_previous),
+                  onPressed: _previous,
+                ),
+
+                // PLAY / PAUSE
+                IconButton(
+                  iconSize: 48,
                   icon: Icon(
                     _player.playing
                         ? Icons.pause_circle_filled
                         : Icons.play_circle_fill,
-                    size: 42,
                   ),
                   onPressed: () {
                     _player.playing ? _player.pause() : _player.play();
                     setState(() {});
                   },
                 ),
+
+                // NEXT
                 IconButton(
-                    icon: const Icon(Icons.skip_next), onPressed: _next),
+                  icon: const Icon(Icons.skip_next),
+                  onPressed: _next,
+                ),
+
+                // REPEAT
+                IconButton(
+                  icon: Icon(
+                    Icons.repeat,
+                    color: _player.loopMode == LoopMode.one
+                        ? Colors.green
+                        : Colors.grey,
+                  ),
+                  onPressed: () {
+                    _player.setLoopMode(
+                      _player.loopMode == LoopMode.one
+                          ? LoopMode.off
+                          : LoopMode.one,
+                    );
+                    setState(() {});
+                  },
+                ),
               ],
+            ),
+
+            // VOLUME
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.volume_down),
+                  Expanded(
+                    child: Slider(
+                      min: 0,
+                      max: 1,
+                      value: _player.volume,
+                      onChanged: (v) {
+                        _player.setVolume(v);
+                        setState(() {});
+                      },
+                    ),
+                  ),
+                  const Icon(Icons.volume_up),
+                ],
+              ),
             ),
           ],
         ),
@@ -191,8 +262,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 }
 
-/* ---------- ABOUT ---------- */
-
+/* ---------------- ABOUT ---------------- */
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
