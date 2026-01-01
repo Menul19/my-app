@@ -1,24 +1,5 @@
-name: menul_music_pro
-description: "A new Flutter music player project."
-publish_to: 'none'
-version: 1.0.0+1
 
-environment:
-  sdk: '>=3.0.0 <4.0.0' # මෙය අනිවාර්යයෙන්ම තිබිය යුතුයි
-
-dependencies:
-  flutter:
-    sdk: flutter
-  on_audio_query: ^2.9.0
-  audioplayers: ^5.2.1
-  permission_handler: ^11.3.1
-  google_fonts: ^6.2.1
-  animate_do: ^3.3.4
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^3.0.0
-
-flutter:
-  uses-material-design: true
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
