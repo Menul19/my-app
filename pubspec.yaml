@@ -1,23 +1,7 @@
-name: menul_music_pro
-description: "Premium Music Player with Bass Visualizer"
-publish_to: 'none'
-version: 1.0.0+1
-
-environment:
-  sdk: '>=3.0.0 <4.0.0'
-
 dependencies:
   flutter:
     sdk: flutter
-  on_audio_query: ^2.9.0
-  just_audio: ^0.9.36
-  permission_handler: ^11.3.0
-  google_fonts: ^6.1.0
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^3.0.0
-
-flutter:
-  uses-material-design: true
+  audioplayers: ^5.2.1 # සින්දු ප්ලේ කිරීමට
+  provider: ^6.1.1     # Dark mode සහ state management සඳහා
+  google_fonts: ^6.1.0 # ලස්සන font එකක් සඳහා
+  animate_do: ^3.3.4   # Animations සඳහා
