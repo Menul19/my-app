@@ -1,6 +1,15 @@
+name: menul_music_pro
+description: Offline Music Player by Menul Mihisara
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.19.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
   on_audio_query: ^2.9.0
   just_audio: ^0.9.36
+
+flutter:
+  uses-material-design: true
