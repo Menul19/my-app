@@ -52,6 +52,7 @@ class _MainContainerState extends State<MainContainer> {
   int _currentIndex = 0;
   final AudioPlayer _audioPlayer = AudioPlayer();
   List<SongModel> _allSongs = [];
+  List<SongModel> _favoriteSongs = [];
   int _currentSongIndex = -1;
   bool _isPlaying = false;
 
@@ -64,12 +65,22 @@ class _MainContainerState extends State<MainContainer> {
     _audioPlayer.play(DeviceFileSource(songs[index].uri!));
   }
 
+  void _toggleFavorite(SongModel song) {
+    setState(() {
+      if (_favoriteSongs.contains(song)) {
+        _favoriteSongs.remove(song);
+      } else {
+        _favoriteSongs.add(song);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Widget> tabs = [
-      MusicHome(onPlay: _playSong),
-      const Center(child: Text("Playlists")),
-      const Center(child: Text("Favorites")),
+      MusicHome(onPlay: _playSong, favorites: _favoriteSongs, onFavToggle: _toggleFavorite),
+      const Center(child: Text("Playlists (Coming Soon)")),
+      FavoriteScreen(favorites: _favoriteSongs, onPlay: _playSong),
     ];
 
     return Scaffold(
@@ -123,7 +134,9 @@ class _MainContainerState extends State<MainContainer> {
 
 class MusicHome extends StatefulWidget {
   final Function(List<SongModel>, int) onPlay;
-  const MusicHome({super.key, required this.onPlay});
+  final List<SongModel> favorites;
+  final Function(SongModel) onFavToggle;
+  const MusicHome({super.key, required this.onPlay, required this.favorites, required this.onFavToggle});
 
   @override
   State<MusicHome> createState() => _MusicHomeState();
@@ -135,7 +148,7 @@ class _MusicHomeState extends State<MusicHome> {
   List<SongModel> _filteredSongs = [];
   bool _isLoading = true;
   bool _isSearching = false;
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -144,6 +157,7 @@ class _MusicHomeState extends State<MusicHome> {
   }
 
   _fetchSongs() async {
+    // Android 12 permissions
     if (await Permission.storage.request().isGranted || await Permission.audio.request().isGranted) {
       List<SongModel> tempSongs = await _audioQuery.querySongs(uriType: UriType.EXTERNAL, ignoreCase: true);
       setState(() {
@@ -165,35 +179,56 @@ class _MusicHomeState extends State<MusicHome> {
     return Scaffold(
       appBar: AppBar(
         title: _isSearching 
-          ? TextField(
-              controller: _searchController,
-              autofocus: true,
-              decoration: const InputDecoration(hintText: "Search songs...", border: InputBorder.none),
-              onChanged: _filterSongs,
-            )
+          ? TextField(controller: _searchController, autofocus: true, decoration: const InputDecoration(hintText: "Search songs...", border: InputBorder.none), onChanged: _filterSongs)
           : const Text("Menul Music Pro"),
         actions: [
-          IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: () => setState(() {
-              _isSearching = !_isSearching;
-              if (!_isSearching) {
-                _filteredSongs = _songs;
-                _searchController.clear();
-              }
-            }),
-          ),
+          IconButton(icon: Icon(_isSearching ? Icons.close : Icons.search), onPressed: () => setState(() {
+            _isSearching = !_isSearching;
+            if (!_isSearching) { _filteredSongs = _songs; _searchController.clear(); }
+          })),
         ],
       ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
         : ListView.builder(
             itemCount: _filteredSongs.length,
+            padding: const EdgeInsets.only(bottom: 100),
+            itemBuilder: (context, index) {
+              final song = _filteredSongs[index];
+              final isFav = widget.favorites.contains(song);
+              return ListTile(
+                leading: QueryArtworkWidget(id: song.id, type: ArtworkType.AUDIO),
+                title: Text(song.displayNameWOExt, maxLines: 1),
+                subtitle: Text("${song.artist}"),
+                trailing: IconButton(
+                  icon: Icon(isFav ? Icons.favorite : Icons.favorite_border, color: isFav ? Colors.red : null),
+                  onPressed: () => widget.onFavToggle(song),
+                ),
+                onTap: () => widget.onPlay(_filteredSongs, index),
+              );
+            },
+          ),
+    );
+  }
+}
+
+class FavoriteScreen extends StatelessWidget {
+  final List<SongModel> favorites;
+  final Function(List<SongModel>, int) onPlay;
+  const FavoriteScreen({super.key, required this.favorites, required this.onPlay});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("My Favorites")),
+      body: favorites.isEmpty 
+        ? const Center(child: Text("No favorites yet!"))
+        : ListView.builder(
+            itemCount: favorites.length,
             itemBuilder: (context, index) => ListTile(
-              leading: QueryArtworkWidget(id: _filteredSongs[index].id, type: ArtworkType.AUDIO),
-              title: Text(_filteredSongs[index].displayNameWOExt),
-              subtitle: Text("${_filteredSongs[index].artist}"),
-              onTap: () => widget.onPlay(_filteredSongs, index),
+              leading: QueryArtworkWidget(id: favorites[index].id, type: ArtworkType.AUDIO),
+              title: Text(favorites[index].displayNameWOExt),
+              onTap: () => onPlay(favorites, index),
             ),
           ),
     );
