@@ -3,6 +3,7 @@ import 'package:on_audio_query/on_audio_query.dart';
 import 'package:just_audio/just_audio.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MenulMusicPro());
 }
 
@@ -30,7 +31,7 @@ class MenulMusicPro extends StatelessWidget {
   }
 }
 
-/* ---------------- SPLASH SCREEN ---------------- */
+/* ---------- SPLASH ---------- */
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -64,7 +65,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-/* ---------------- PLAYER SCREEN ---------------- */
+/* ---------- PLAYER ---------- */
 
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
@@ -74,44 +75,43 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
-  final OnAudioQuery audioQuery = OnAudioQuery();
-  final AudioPlayer player = AudioPlayer();
+  final OnAudioQuery _audioQuery = OnAudioQuery();
+  final AudioPlayer _player = AudioPlayer();
 
-  List<SongModel> songs = [];
-  int currentIndex = 0;
-
-  bool shuffle = false;
-  bool repeat = false;
+  List<SongModel> _songs = [];
+  int _index = 0;
 
   @override
   void initState() {
     super.initState();
-    loadSongs();
+    _loadSongs();
   }
 
-  Future<void> loadSongs() async {
-    await audioQuery.permissionsRequest();
-    songs = await audioQuery.querySongs();
+  Future<void> _loadSongs() async {
+    bool permission = await _audioQuery.permissionsRequest();
+    if (!permission) return;
+
+    _songs = await _audioQuery.querySongs();
     setState(() {});
   }
 
-  Future<void> playSong(int index) async {
-    currentIndex = index;
-    await player.setAudioSource(
-      AudioSource.uri(Uri.parse(songs[index].uri!)),
+  Future<void> _playSong(int index) async {
+    _index = index;
+    await _player.setAudioSource(
+      AudioSource.uri(Uri.parse(_songs[index].uri!)),
     );
-    player.play();
+    _player.play();
     setState(() {});
   }
 
-  void nextSong() {
-    int next = (currentIndex + 1) % songs.length;
-    playSong(next);
+  void _next() {
+    if (_songs.isEmpty) return;
+    _playSong((_index + 1) % _songs.length);
   }
 
-  void previousSong() {
-    int prev = currentIndex == 0 ? songs.length - 1 : currentIndex - 1;
-    playSong(prev);
+  void _previous() {
+    if (_songs.isEmpty) return;
+    _playSong(_index == 0 ? _songs.length - 1 : _index - 1);
   }
 
   @override
@@ -131,39 +131,34 @@ class _PlayerScreenState extends State<PlayerScreen> {
           )
         ],
       ),
-      body: songs.isEmpty
-          ? const Center(child: CircularProgressIndicator())
+      body: _songs.isEmpty
+          ? const Center(child: Text("No songs found"))
           : ListView.builder(
-              itemCount: songs.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  leading: const Icon(Icons.music_note),
-                  title: Text(songs[index].title),
-                  subtitle: Text(songs[index].artist ?? "Unknown Artist"),
-                  onTap: () => playSong(index),
-                );
-              },
+              itemCount: _songs.length,
+              itemBuilder: (_, i) => ListTile(
+                leading: const Icon(Icons.music_note),
+                title: Text(_songs[i].title),
+                subtitle: Text(_songs[i].artist ?? "Unknown"),
+                onTap: () => _playSong(i),
+              ),
             ),
       bottomNavigationBar: BottomAppBar(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             StreamBuilder<Duration>(
-              stream: player.positionStream,
-              builder: (context, snapshot) {
+              stream: _player.positionStream,
+              builder: (_, snapshot) {
                 final position = snapshot.data ?? Duration.zero;
-                final duration = player.duration ?? Duration.zero;
+                final duration = _player.duration ?? Duration.zero;
                 return Slider(
                   min: 0,
-                  max: duration.inSeconds.toDouble() == 0
-                      ? 1
-                      : duration.inSeconds.toDouble(),
+                  max: duration.inSeconds.toDouble().clamp(1, double.infinity),
                   value: position.inSeconds
                       .toDouble()
                       .clamp(0, duration.inSeconds.toDouble()),
-                  onChanged: (value) {
-                    player.seek(Duration(seconds: value.toInt()));
-                  },
+                  onChanged: (v) =>
+                      _player.seek(Duration(seconds: v.toInt())),
                 );
               },
             ),
@@ -171,23 +166,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.skip_previous),
-                  onPressed: previousSong,
-                ),
+                    icon: const Icon(Icons.skip_previous),
+                    onPressed: _previous),
                 IconButton(
                   icon: Icon(
-                    player.playing ? Icons.pause_circle : Icons.play_circle,
+                    _player.playing
+                        ? Icons.pause_circle_filled
+                        : Icons.play_circle_fill,
                     size: 42,
                   ),
                   onPressed: () {
-                    player.playing ? player.pause() : player.play();
+                    _player.playing ? _player.pause() : _player.play();
                     setState(() {});
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.skip_next),
-                  onPressed: nextSong,
-                ),
+                    icon: const Icon(Icons.skip_next), onPressed: _next),
               ],
             ),
           ],
@@ -197,7 +191,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 }
 
-/* ---------------- ABOUT SCREEN ---------------- */
+/* ---------- ABOUT ---------- */
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
