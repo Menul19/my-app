@@ -97,8 +97,8 @@ class _MainContainerState extends State<MainContainer> {
   Widget _buildAdvancedPlayer() {
     return SlideInUp(
       child: Container(
-        height: 150, margin: const EdgeInsets.all(12), padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(25), border: Border.all(color: Colors.cyanAccent.withOpacity(0.3))),
+        height: 160, margin: const EdgeInsets.all(12), padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(25), border: Border.all(color: Colors.cyanAccent.withOpacity(0.3))),
         child: Column(
           children: [
             Row(children: [
@@ -109,12 +109,13 @@ class _MainContainerState extends State<MainContainer> {
             Slider(
               activeColor: Colors.cyanAccent,
               value: _position.inSeconds.toDouble(),
-              max: _duration.inSeconds.toDouble(),
+              max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
               onChanged: (v) => _audioPlayer.seek(Duration(seconds: v.toInt())),
             ),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               IconButton(icon: const Icon(Icons.skip_previous), onPressed: _prevSong),
-              IconButton(icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 40, color: Colors.cyanAccent), onPressed: () {
+              IconButton(icon: const Icon(Icons.stop), onPressed: () { _audioPlayer.stop(); setState(() => _isPlaying = false); }),
+              IconButton(icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 45, color: Colors.cyanAccent), onPressed: () {
                 _isPlaying ? _audioPlayer.pause() : _audioPlayer.resume();
                 setState(() => _isPlaying = !_isPlaying);
               }),
@@ -140,23 +141,21 @@ class _MusicHomeState extends State<MusicHome> {
   bool _isLoading = true;
 
   @override
-  void initState() { super.initState(); _requestPermission(); }
+  void initState() { super.initState(); _requestStoragePermission(); }
 
-  void _requestPermission() async {
-    // Android 12/13 සඳහා Storage Permission ලබාගැනීම
+  // Android 12 MIUI විශේෂිත Permission Fix
+  void _requestStoragePermission() async {
+    // පළමුව සාමාන්‍ය storage අවසරය ඉල්ලයි
     var status = await Permission.storage.request();
     
+    // Android 11/12 සඳහා මෙය අනිවාර්ය විය හැක
+    if (!status.isGranted) {
+      status = await Permission.manageExternalStorage.request();
+    }
+
     if (status.isGranted) {
       _loadSongs();
     } else {
-      // Permission හිර වී ඇත්නම් settings විවෘත කිරීමට බල කිරීම
-      if (mounted) {
-        showDialog(context: context, builder: (context) => AlertDialog(
-          title: const Text("Permission Needed"),
-          content: const Text("MIUI requires manual permission. Please go to Settings -> Permissions -> Storage and Allow access."),
-          actions: [TextButton(onPressed: () => openAppSettings(), child: const Text("Open Settings"))],
-        ));
-      }
       setState(() => _isLoading = false);
     }
   }
@@ -169,18 +168,18 @@ class _MusicHomeState extends State<MusicHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Menul Music Pro")),
+      appBar: AppBar(title: const Text("Menul Music Pro"), actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _requestStoragePermission)]),
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
           : _songs.isEmpty 
               ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Text("No songs found!"),
+                  const Text("Songs not found! Check Permission."),
                   const SizedBox(height: 10),
-                  ElevatedButton(onPressed: _requestPermission, child: const Text("Grant Permission & Refresh")),
+                  ElevatedButton(onPressed: () => openAppSettings(), child: const Text("Open App Settings")),
                 ]))
               : ListView.builder(
                   itemCount: _songs.length,
-                  padding: const EdgeInsets.only(bottom: 160),
+                  padding: const EdgeInsets.only(bottom: 170),
                   itemBuilder: (context, index) => ListTile(
                     leading: QueryArtworkWidget(id: _songs[index].id, type: ArtworkType.AUDIO),
                     title: Text(_songs[index].displayNameWOExt, maxLines: 1),
