@@ -17,8 +17,8 @@ class TranslatorApp extends StatefulWidget {
 class _TranslatorAppState extends State<TranslatorApp> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterTts _tts = FlutterTts();
-  String _text = "Speak...";
-  String _translated = "Translation...";
+  String _text = "මයික්‍රොෆෝනය ඔබා කතා කරන්න...";
+  String _translated = "පරිවර්තනය මෙහි දිස්වේවි";
 
   final _translator = OnDeviceTranslator(
     sourceLanguage: TranslateLanguage.sinhala,
@@ -42,16 +42,22 @@ class _TranslatorAppState extends State<TranslatorApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Translator")),
+      appBar: AppBar(title: const Text("Traveler Assistant")),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(_text, style: const TextStyle(fontSize: 18)),
-            const Icon(Icons.arrow_downward),
-            Text(_translated, style: const TextStyle(fontSize: 18, color: Colors.blue)),
-            const SizedBox(height: 40),
-            ElevatedButton(onPressed: _listen, child: const Text("Mic On")),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Text(_text, style: const TextStyle(fontSize: 18), textAlign: TextAlign.center),
+            ),
+            const Icon(Icons.translate, size: 50, color: Colors.blue),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Text(_translated, style: const TextStyle(fontSize: 18, color: Colors.blue, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            ),
+            const SizedBox(height: 50),
+            FloatingActionButton.large(onPressed: _listen, child: const Icon(Icons.mic)),
           ],
         ),
       ),
