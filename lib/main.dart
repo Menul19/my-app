@@ -3,11 +3,12 @@ import 'package:on_audio_query/on_audio_query.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:animate_do/animate_do.dart';
 
-void main() => runApp(const MaterialApp(home: SplashScreen(), debugShowCheckedModeBanner: false));
+void main() {
+  WidgetsFlutterBinding.ensureInitialized(); // Crash වීම වැළැක්වීමට මෙය අත්‍යවශ්‍යයි
+  runApp(const MaterialApp(home: SplashScreen(), debugShowCheckedModeBanner: false));
+}
 
-// --- Splash Screen ---
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
   @override
@@ -18,26 +19,18 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    // තත්පර 3ක ප්‍රමාදයක් ලබා දීමෙන් ඇප් එක ස්ථාවර වේ
     Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MenulMusicPro()));
+      if (mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MenulMusicPro()));
+      }
     });
   }
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: Colors.black,
-      body: Center(
-        child: FadeInDown(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.music_note_rounded, size: 100, color: Colors.cyanAccent),
-              const SizedBox(height: 20),
-              Text("Menul Music Pro", style: GoogleFonts.poppins(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white)),
-            ],
-          ),
-        ),
-      ),
+      body: Center(child: Icon(Icons.music_note, size: 100, color: Colors.cyanAccent)),
     );
   }
 }
@@ -52,130 +45,68 @@ class _MenulMusicProState extends State<MenulMusicPro> {
   final OnAudioQuery _audioQuery = OnAudioQuery();
   final AudioPlayer _audioPlayer = AudioPlayer();
   List<SongModel> _songs = [];
-  int _currentIndex = -1;
-  bool _isPlaying = false;
-  Duration _duration = Duration.zero;
-  Duration _position = Duration.zero;
+  bool _isPermissionGranted = false;
 
   @override
   void initState() {
     super.initState();
-    _setupListeners();
-    _requestInitialPermission();
+    _checkPermission();
   }
 
-  void _setupListeners() {
-    _audioPlayer.onDurationChanged.listen((d) => setState(() => _duration = d));
-    _audioPlayer.onPositionChanged.listen((p) => setState(() => _position = p));
-    _audioPlayer.onPlayerComplete.listen((event) => _nextSong());
-  }
-
-  // Crash වීම නැවැත්වීමට Permission ආරක්ෂිතව ඉල්ලීම
-  void _requestInitialPermission() async {
+  // ඉතා ආරක්ෂිතව Permission පරීක්ෂා කිරීම
+  void _checkPermission() async {
     try {
-      var status = await Permission.storage.status;
-      if (!status.isGranted) {
-        await Permission.storage.request();
+      bool permissionStatus = await _audioQuery.permissionsStatus();
+      if (!permissionStatus) {
+        await _audioQuery.permissionsRequest();
       }
-      _loadSongs();
+      
+      var status = await Permission.storage.status;
+      if (status.isGranted) {
+        setState(() => _isPermissionGranted = true);
+        _loadSongs();
+      } else {
+        // Redmi සඳහා විශේෂිතයි
+        await Permission.manageExternalStorage.request();
+        _loadSongs();
+      }
     } catch (e) {
       debugPrint("Permission Error: $e");
     }
   }
 
-  void _loadSongs() async {
+  _loadSongs() async {
     try {
-      _songs = await _audioQuery.querySongs(uriType: UriType.EXTERNAL, ignoreCase: true);
+      _songs = await _audioQuery.querySongs(uriType: UriType.EXTERNAL);
       setState(() {});
     } catch (e) {
       debugPrint("Load Error: $e");
     }
   }
 
-  void _playSong(int index) {
-    _currentIndex = index;
-    _audioPlayer.play(DeviceFileSource(_songs[index].uri!));
-    setState(() => _isPlaying = true);
-  }
-
-  void _nextSong() { if (_currentIndex < _songs.length - 1) _playSong(_currentIndex + 1); }
-  void _prevSong() { if (_currentIndex > 0) _playSong(_currentIndex - 1); }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF09090B),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text("Menul Music Pro", style: GoogleFonts.poppins(color: Colors.white)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white),
-            onPressed: () => openAppSettings(), // Permission හදන්න කෙලින්ම Settings යන්න
-          )
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _songs.isEmpty 
-              ? Center(child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text("No songs found!", style: TextStyle(color: Colors.white)),
-                    const SizedBox(height: 10),
-                    ElevatedButton(onPressed: _requestInitialPermission, child: const Text("Try Again")),
-                  ],
-                ))
-              : ListView.builder(
-                  itemCount: _songs.length,
-                  itemBuilder: (context, index) => ListTile(
-                    leading: QueryArtworkWidget(id: _songs[index].id, type: ArtworkType.AUDIO),
-                    title: Text(_songs[index].displayNameWOExt, maxLines: 1, style: const TextStyle(color: Colors.white)),
-                    onTap: () => _playSong(index),
-                  ),
-                ),
-          ),
-          if (_currentIndex != -1) _buildPlayerUI(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlayerUI() {
-    return SlideInUp(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(color: Color(0xFF18181B), borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
-        child: Column(
-          children: [
-            Slider(
-              activeColor: Colors.cyanAccent,
-              value: _position.inSeconds.toDouble(),
-              max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
-              onChanged: (v) => _audioPlayer.seek(Duration(seconds: v.toInt())),
+      backgroundColor: const Color(0xFF0F0F0F),
+      appBar: AppBar(title: Text("Menul Music Pro", style: GoogleFonts.poppins())),
+      body: _songs.isEmpty 
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("No songs found!", style: TextStyle(color: Colors.white)),
+                  ElevatedButton(onPressed: _checkPermission, child: const Text("Give Permission")),
+                ],
+              ),
+            )
+          : ListView.builder(
+              itemCount: _songs.length,
+              itemBuilder: (context, index) => ListTile(
+                leading: QueryArtworkWidget(id: _songs[index].id, type: ArtworkType.AUDIO),
+                title: Text(_songs[index].displayNameWOExt, style: const TextStyle(color: Colors.white)),
+                onTap: () => _audioPlayer.play(DeviceFileSource(_songs[index].uri!)),
+              ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(icon: const Icon(Icons.skip_previous, size: 35, color: Colors.white), onPressed: _prevSong),
-                IconButton(
-                  icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 55, color: Colors.cyanAccent),
-                  onPressed: () {
-                    _isPlaying ? _audioPlayer.pause() : _audioPlayer.resume();
-                    setState(() => _isPlaying = !_isPlaying);
-                  },
-                ),
-                IconButton(icon: const Icon(Icons.stop, size: 35, color: Colors.redAccent), onPressed: () {
-                  _audioPlayer.stop();
-                  setState(() => _isPlaying = false);
-                }),
-                IconButton(icon: const Icon(Icons.skip_next, size: 35, color: Colors.white), onPressed: _nextSong),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
