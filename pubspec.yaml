@@ -1,20 +1,8 @@
-name: traveler_translator
-description: "AI Translator for Travelers"
-publish_to: 'none'
-version: 1.0.0+1
-
-environment:
-  sdk: '>=3.0.0 <4.0.0'
-
 dependencies:
   flutter:
     sdk: flutter
-  google_mlkit_translation: ^0.10.0
-  speech_to_text: ^6.6.0
-  flutter_tts: ^3.8.3
-  permission_handler: ^11.3.1
-  google_fonts: ^6.2.1
-
-flutter:
-  uses-material-design: true
+  cupertino_icons: ^1.0.6
+  http: ^1.1.0 # API හරහා පරිවර්තනය කිරීමට
+  speech_to_text: ^6.1.1 # හඬ හඳුනා ගැනීමට
+  avatar_glow: ^2.0.2 # මයික්‍රොෆෝනය සඳහා visual effect එකක් දීමට
 
