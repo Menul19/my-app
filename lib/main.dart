@@ -1,40 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_translation/google_mlkit_translation.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:flutter_tts/flutter_tts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MaterialApp(home: TranslatorApp(), debugShowCheckedModeBanner: false));
-}
+void main() => runApp(TranslatorApp());
 
-class TranslatorApp extends StatefulWidget {
-  const TranslatorApp({super.key});
+class TranslatorApp extends StatelessWidget {
   @override
-  State<TranslatorApp> createState() => _TranslatorAppState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TranslationScreen(),
+    );
+  }
 }
 
-class _TranslatorAppState extends State<TranslatorApp> {
-  final stt.SpeechToText _speech = stt.SpeechToText();
-  final FlutterTts _tts = FlutterTts();
-  String _text = "මයික්‍රොෆෝනය ඔබා කතා කරන්න...";
-  String _translated = "පරිවර්තනය මෙහි දිස්වේවි";
+class TranslationScreen extends StatefulWidget {
+  @override
+  _TranslationScreenState createState() => _TranslationScreenState();
+}
 
-  final _translator = OnDeviceTranslator(
-    sourceLanguage: TranslateLanguage.sinhala,
-    targetLanguage: TranslateLanguage.english,
-  );
+class _TranslationScreenState extends State<TranslationScreen> {
+  TextEditingController _controller = TextEditingController();
+  String translatedText = "පරිවර්තනය මෙතන දිස්වේවි...";
 
-  void _listen() async {
-    bool available = await _speech.initialize();
-    if (available) {
-      _speech.listen(onResult: (val) async {
-        setState(() => _text = val.recognizedWords);
-        if (val.finalResult) {
-          final res = await _translator.translateText(_text);
-          setState(() => _translated = res);
-          await _tts.speak(res);
-        }
+  // සරලව API එකක් හරහා පරිවර්තනය කරන ආකාරය (Example using a free API)
+  Future<void> translateText(String text) async {
+    // සටහන: මෙහිදී MyMemory වැනි නොමිලේ ලබාදෙන API එකක් භාවිතා කර ඇත
+    final response = await http.get(Uri.parse(
+        'https://api.mymemory.translated.net/get?q=$text&langpair=si|en'));
+
+    if (response.statusCode == 200) {
+      var data = jsonDecode(response.body);
+      setState(() {
+        translatedText = data['responseData']['translatedText'];
+      });
+    } else {
+      setState(() {
+        translatedText = "Error: සම්බන්ධතාවය පරීක්ෂා කරන්න.";
       });
     }
   }
@@ -42,22 +44,33 @@ class _TranslatorAppState extends State<TranslatorApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Traveler Assistant")),
-      body: Center(
+      app_appBar: AppBar(title: Text("සංචාරක සහායකයා (Translator)")),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Text(_text, style: const TextStyle(fontSize: 18), textAlign: TextAlign.center),
+            TextField(
+              controller: _controller,
+              decoration: InputDecoration(
+                hintText: "සිංහලෙන් ලියන්න...",
+                border: OutlineInputBorder(),
+              ),
             ),
-            const Icon(Icons.translate, size: 50, color: Colors.blue),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Text(_translated, style: const TextStyle(fontSize: 18, color: Colors.blue, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => translateText(_controller.text),
+              child: Text("පරිවර්තනය කරන්න (Translate)"),
             ),
-            const SizedBox(height: 50),
-            FloatingActionButton.large(onPressed: _listen, child: const Icon(Icons.mic)),
+            SizedBox(height: 20),
+            Container(
+              padding: EdgeInsets.all(10),
+              width: double.infinity,
+              color: Colors.grey[200],
+              child: Text(
+                translatedText,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
       ),
