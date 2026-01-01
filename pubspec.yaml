@@ -1,27 +1,11 @@
-name: menul_music_pro
-description: "Professional Music Player by Menul Mihisara"
-publish_to: 'none'
-
-version: 1.0.0+1
-
 environment:
-  sdk: '>=3.4.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0" # මෙය නිවැරදිව ඇතුළත් කරන්න
 
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.6
-  google_fonts: ^6.1.0
-  animate_do: ^3.3.4
-  provider: ^6.1.1
   on_audio_query: ^2.9.0
   audioplayers: ^5.2.1
   permission_handler: ^11.3.1
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^3.0.0
-
-flutter:
-  uses-material-design: true
+  google_fonts: ^6.2.1
+  animate_do: ^3.3.4
