@@ -1,27 +1,48 @@
-name: Build APK
-on: [push, workflow_dispatch]
+name: Flutter Build APK
+
+on:
+  push:
+    branches:
+      - main  # ඔයාගේ ප්‍රධාන branch එකේ නම වෙනස් නම් ඒක මෙතනට දාන්න (උදා: master)
+  pull_request:
+    branches:
+      - main
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Setup Flutter
+    steps:
+      # 1. GitHub එකේ තියෙන ඔයාගේ Code එක ලබාගැනීම
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Java setup කිරීම (Android build එකට අවශ්‍යයි)
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '12'
+
+      # 3. Flutter setup කිරීම
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.19.0' # ඔයා පාවිච්චි කරන version එක දාන්නත් පුළුවන්
           channel: 'stable'
 
-      - name: Create Android Project
-        run: |
-          flutter create --project-name my_app . --platforms android
-          git checkout lib/main.dart
+      # 4. අවශ්‍ය Packages download කිරීම
+      - name: Install dependencies
+        run: flutter pub get
 
-      - run: flutter pub get
-      - run: flutter build apk --release --no-tree-shake-icons
+      # 5. APK එක Build කිරීම (Icon error එක එන්නේ නැති වෙන්න flag එක මෙතන තියෙනවා)
+      - name: Build APK
+        run: flutter build apk --release --no-tree-shake-icons
 
+      # 6. Build වුණු APK එක GitHub එකට Upload කිරීම (එතකොට ඔයාට download කරන්න පුළුවන්)
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: my-app-apk
+          name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
