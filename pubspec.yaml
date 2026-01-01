@@ -14,8 +14,8 @@ dependencies:
   google_fonts: ^6.1.0
   animate_do: ^3.3.4
   provider: ^6.1.1
-  audioplayers: ^5.2.1
   on_audio_query: ^2.9.0
+  audioplayers: ^5.2.1
   permission_handler: ^11.3.1
 
 dev_dependencies:
