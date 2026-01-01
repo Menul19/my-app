@@ -18,7 +18,6 @@ void main() {
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.dark;
   ThemeMode get themeMode => _themeMode;
-
   void toggleTheme(bool isDark) {
     _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
@@ -27,13 +26,12 @@ class ThemeProvider extends ChangeNotifier {
 
 class MenulMusicPro extends StatelessWidget {
   const MenulMusicPro({super.key});
-
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.deepPurple),
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.cyanAccent),
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
@@ -41,14 +39,52 @@ class MenulMusicPro extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF09090B),
       ),
       themeMode: themeProvider.themeMode,
-      home: const MainContainer(),
+      home: const SplashScreen(), // මුලින්ම පෙන්වන්නේ මෙයයි
+    );
+  }
+}
+
+// --- Splash Screen ---
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainContainer()));
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: FadeInDown(
+          duration: const Duration(seconds: 2),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.music_note_rounded, size: 100, color: Colors.cyanAccent),
+              const SizedBox(height: 20),
+              Text("Menul Music Pro", 
+                style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
 
 class MainContainer extends StatefulWidget {
   const MainContainer({super.key});
-
   @override
   State<MainContainer> createState() => _MainContainerState();
 }
@@ -57,7 +93,6 @@ class _MainContainerState extends State<MainContainer> {
   int _currentIndex = 0;
   final AudioPlayer _audioPlayer = AudioPlayer();
   List<SongModel> _allSongs = [];
-  List<SongModel> _favoriteSongs = [];
   int _currentSongIndex = -1;
   bool _isPlaying = false;
 
@@ -70,18 +105,12 @@ class _MainContainerState extends State<MainContainer> {
     _audioPlayer.play(DeviceFileSource(songs[index].uri!));
   }
 
-  void _toggleFavorite(SongModel song) {
-    setState(() {
-      _favoriteSongs.contains(song) ? _favoriteSongs.remove(song) : _favoriteSongs.add(song);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final List<Widget> tabs = [
-      MusicHome(onPlay: _playSong, favorites: _favoriteSongs, onFavToggle: _toggleFavorite),
-      const Center(child: Text("Playlists (Coming Soon)")),
-      FavoriteScreen(favorites: _favoriteSongs, onPlay: _playSong),
+      MusicHome(onPlay: _playSong),
+      const Center(child: Text("Library")),
+      const Center(child: Text("Liked Songs")),
     ];
 
     return Scaffold(
@@ -89,58 +118,35 @@ class _MainContainerState extends State<MainContainer> {
         children: [
           tabs[_currentIndex],
           if (_currentSongIndex != -1)
-            Positioned(bottom: 0, left: 0, right: 0, child: _buildModernPlayer()),
+            Positioned(bottom: 0, left: 0, right: 0, child: _buildMiniPlayer()),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.explore), label: "Explore"),
+          NavigationDestination(icon: Icon(Icons.home_filled), label: "Home"),
           NavigationDestination(icon: Icon(Icons.library_music), label: "Library"),
-          NavigationDestination(icon: Icon(Icons.favorite_rounded), label: "Liked"),
+          NavigationDestination(icon: Icon(Icons.favorite), label: "Liked"),
         ],
       ),
     );
   }
 
-  Widget _buildModernPlayer() {
-    return FadeInUp(
+  Widget _buildMiniPlayer() {
+    return SlideInUp(
       child: Container(
-        height: 75,
-        margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 15),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.white10),
-        ),
+        height: 70, margin: const EdgeInsets.all(10), padding: const EdgeInsets.symmetric(horizontal: 15),
+        decoration: BoxDecoration(color: Colors.cyanAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.cyanAccent.withOpacity(0.3))),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(15),
-              child: QueryArtworkWidget(id: _allSongs[_currentSongIndex].id, type: ArtworkType.AUDIO, size: 50),
-            ),
+            QueryArtworkWidget(id: _allSongs[_currentSongIndex].id, type: ArtworkType.AUDIO, size: 45),
             const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_allSongs[_currentSongIndex].displayNameWOExt, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Text(_allSongs[_currentSongIndex].artist ?? "Unknown", style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: Icon(_isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled, size: 45, color: Colors.cyanAccent),
-              onPressed: () {
-                _isPlaying ? _audioPlayer.pause() : _audioPlayer.resume();
-                setState(() => _isPlaying = !_isPlaying);
-              },
-            ),
+            Expanded(child: Text(_allSongs[_currentSongIndex].displayNameWOExt, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.bold))),
+            IconButton(icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 40), onPressed: () {
+              _isPlaying ? _audioPlayer.pause() : _audioPlayer.resume();
+              setState(() => _isPlaying = !_isPlaying);
+            }),
           ],
         ),
       ),
@@ -150,10 +156,7 @@ class _MainContainerState extends State<MainContainer> {
 
 class MusicHome extends StatefulWidget {
   final Function(List<SongModel>, int) onPlay;
-  final List<SongModel> favorites;
-  final Function(SongModel) onFavToggle;
-  const MusicHome({super.key, required this.onPlay, required this.favorites, required this.onFavToggle});
-
+  const MusicHome({super.key, required this.onPlay});
   @override
   State<MusicHome> createState() => _MusicHomeState();
 }
@@ -161,109 +164,61 @@ class MusicHome extends StatefulWidget {
 class _MusicHomeState extends State<MusicHome> {
   final OnAudioQuery _audioQuery = OnAudioQuery();
   List<SongModel> _songs = [];
-  List<SongModel> _filteredSongs = [];
   bool _isLoading = true;
-  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _fetchSongs();
+    _requestPermission();
   }
 
-  _fetchSongs() async {
-    // Android 12 Storage Permission Fix
-    var status = await Permission.storage.request();
+  // Android 12 Storage Permission Fix
+  void _requestPermission() async {
+    // පළමුව Permission ලබාගෙන ඇත්දැයි බලන්න
+    var status = await Permission.storage.status;
+    if (!status.isGranted) {
+      status = await Permission.storage.request();
+    }
+    
+    // වැදගත්: Android 11/12 සඳහා 'Manage External Storage' සමහරවිට අවශ්‍ය වේ
+    if (status.isPermanentlyDenied) {
+      openAppSettings();
+    }
+
     if (status.isGranted) {
-      List<SongModel> tempSongs = await _audioQuery.querySongs(uriType: UriType.EXTERNAL, ignoreCase: true);
-      setState(() {
-        _songs = tempSongs;
-        _filteredSongs = tempSongs;
-        _isLoading = false;
-      });
+      _loadSongs();
+    } else {
+      setState(() => _isLoading = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Hello Menul,", style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold)),
-                  const CircleAvatar(backgroundColor: Colors.white10, child: Icon(Icons.person_outline)),
-                ],
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _searchController,
-                onChanged: (v) => setState(() => _filteredSongs = _songs.where((s) => s.displayNameWOExt.toLowerCase().contains(v.toLowerCase())).toList()),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
-                  prefixIcon: const Icon(Icons.search, color: Colors.cyanAccent),
-                  hintText: "Search your vibe...",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: _isLoading 
-                  ? const Center(child: CircularProgressIndicator(color: Colors.cyanAccent))
-                  : ListView.builder(
-                      itemCount: _filteredSongs.length,
-                      itemBuilder: (context, index) {
-                        final song = _filteredSongs[index];
-                        return FadeInLeft(
-                          delay: Duration(milliseconds: index * 50),
-                          child: ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: QueryArtworkWidget(id: song.id, type: ArtworkType.AUDIO, nullArtworkWidget: const CircleAvatar(child: Icon(Icons.music_note))),
-                            title: Text(song.displayNameWOExt, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w500)),
-                            subtitle: Text(song.artist ?? "Unknown", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                            trailing: IconButton(
-                              icon: Icon(widget.favorites.contains(song) ? Icons.favorite : Icons.favorite_border, color: Colors.redAccent),
-                              onPressed: () => widget.onFavToggle(song),
-                            ),
-                            onTap: () => widget.onPlay(_filteredSongs, index),
-                          ),
-                        );
-                      },
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  _loadSongs() async {
+    List<SongModel> temp = await _audioQuery.querySongs(uriType: UriType.EXTERNAL, ignoreCase: true);
+    setState(() {
+      _songs = temp;
+      _isLoading = false;
+    });
   }
-}
-
-class FavoriteScreen extends StatelessWidget {
-  final List<SongModel> favorites;
-  final Function(List<SongModel>, int) onPlay;
-  const FavoriteScreen({super.key, required this.favorites, required this.onPlay});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Liked Songs")),
-      body: favorites.isEmpty 
-        ? const Center(child: Text("Start liking songs to see them here!"))
-        : ListView.builder(
-            itemCount: favorites.length,
-            itemBuilder: (context, index) => ListTile(
-              leading: QueryArtworkWidget(id: favorites[index].id, type: ArtworkType.AUDIO),
-              title: Text(favorites[index].displayNameWOExt),
-              onTap: () => onPlay(favorites, index),
-            ),
-          ),
+      appBar: AppBar(title: const Text("Menul Music Pro"), actions: [IconButton(icon: const Icon(Icons.search), onPressed: (){})]),
+      body: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : _songs.isEmpty 
+              ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Text("No songs found! Did you allow permission?"),
+                  ElevatedButton(onPressed: _requestPermission, child: const Text("Try Again"))
+                ]))
+              : ListView.builder(
+                  itemCount: _songs.length,
+                  itemBuilder: (context, index) => ListTile(
+                    leading: QueryArtworkWidget(id: _songs[index].id, type: ArtworkType.AUDIO),
+                    title: Text(_songs[index].displayNameWOExt, maxLines: 1),
+                    onTap: () => widget.onPlay(_songs, index),
+                  ),
+                ),
     );
   }
 }
