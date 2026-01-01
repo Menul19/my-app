@@ -21,7 +21,7 @@ class _TranslatorAppState extends State<TranslatorApp> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterTts _tts = FlutterTts();
   String _sourceText = "ඔබට අවශ්‍ය දේ පවසන්න...";
-  String _translatedText = "පරිවර්තනය මෙහි දිස්වේවි";
+  String _translatedText = "Translation will appear here";
   bool _isListening = false;
 
   final _translator = OnDeviceTranslator(
@@ -45,9 +45,7 @@ class _TranslatorAppState extends State<TranslatorApp> {
       if (available) {
         setState(() => _isListening = true);
         _speech.listen(onResult: (val) async {
-          setState(() {
-            _sourceText = val.recognizedWords;
-          });
+          setState(() => _sourceText = val.recognizedWords);
           if (val.finalResult) {
             _translate();
             setState(() => _isListening = false);
@@ -63,70 +61,55 @@ class _TranslatorAppState extends State<TranslatorApp> {
   void _translate() async {
     final result = await _translator.translateText(_sourceText);
     setState(() => _translatedText = result);
-    await _tts.speak(result); // පරිවර්තනය කළ දේ ශබ්ද නගා කියවයි
+    await _tts.speak(result);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("Traveler Assistant AI", style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        title: Text("Traveler Assistant", style: GoogleFonts.poppins()),
         backgroundColor: Colors.orangeAccent,
-        centerTitle: true,
-        elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            FadeInDown(child: _buildTextBox("සිංහල (Sinhala)", _sourceText, Colors.orange.shade100)),
+            FadeInDown(child: _buildCard("සිංහල", _sourceText)),
             const SizedBox(height: 20),
-            const Icon(Icons.swap_vert, size: 40, color: Colors.orangeAccent),
+            const Icon(Icons.arrow_downward, size: 40, color: Colors.orange),
             const SizedBox(height: 20),
-            FadeInUp(child: _buildTextBox("English (US)", _translatedText, Colors.blue.shade100)),
+            FadeInUp(child: _buildCard("English", _translatedText)),
             const Spacer(),
-            _buildMicButton(),
+            FloatingActionButton.large(
+              onPressed: _listen,
+              backgroundColor: _isListening ? Colors.red : Colors.orange,
+              child: Icon(_isListening ? Icons.stop : Icons.mic, size: 40),
+            ),
             const SizedBox(height: 20),
-            Text(_isListening ? "මම අසා සිටිමි..." : "මයික්‍රොෆෝනය ඔබා කතා කරන්න", 
-              style: GoogleFonts.notoSansSinhala(color: Colors.grey)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTextBox(String label, String text, Color color) {
+  Widget _buildCard(String lang, String text) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: color,
+        color: Colors.orange.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        border: Border.all(color: Colors.orangeAccent),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
+          Text(lang, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
           const SizedBox(height: 10),
-          Text(text, style: GoogleFonts.notoSansSinhala(fontSize: 18, color: Colors.black87)),
+          Text(text, style: GoogleFonts.notoSansSinhala(fontSize: 18)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMicButton() {
-    return GestureDetector(
-      onTap: _listen,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: _isListening ? Colors.redAccent : Colors.orangeAccent,
-          shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.4), blurRadius: 20, spreadRadius: 5)],
-        ),
-        child: Icon(_isListening ? Icons.stop : Icons.mic, size: 50, color: Colors.white),
       ),
     );
   }
