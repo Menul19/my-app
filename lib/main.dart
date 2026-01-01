@@ -12,7 +12,6 @@ void main() {
   );
 }
 
-// 1. Theme Management (Light/Dark Mode)
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.dark;
   ThemeMode get themeMode => _themeMode;
@@ -33,15 +32,16 @@ class MenulMusicPro extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Menul Music Pro',
       theme: ThemeData(
-        brightness: Brightness.light,
-        primarySwatch: Colors.deepPurple,
         useMaterial3: true,
+        brightness: Brightness.light,
+        colorSchemeSeed: Colors.deepPurple,
         textTheme: GoogleFonts.poppinsTextTheme(),
       ),
       darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F0E17),
         useMaterial3: true,
+        brightness: Brightness.dark,
+        colorSchemeSeed: Colors.deepPurple,
+        scaffoldBackgroundColor: const Color(0xFF121212),
         textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
       ),
       themeMode: themeProvider.themeMode,
@@ -50,7 +50,6 @@ class MenulMusicPro extends StatelessWidget {
   }
 }
 
-// 2. Splash Screen (කැමති නම වැටෙන කොටස)
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -63,7 +62,10 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
+      if (mounted) {
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (context) => const MainContainer()));
+      }
     });
   }
 
@@ -73,9 +75,20 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Center(
         child: FadeInDown(
           duration: const Duration(seconds: 2),
-          child: Text(
-            "Menul Music Pro",
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.deepPurpleAccent),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.music_note_rounded, size: 80, color: Colors.deepPurpleAccent),
+              const SizedBox(height: 20),
+              Text(
+                "Menul Music Pro",
+                style: GoogleFonts.poppins(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -83,96 +96,107 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-// 3. Main UI with Tabs (Home, Playlist, Favorites)
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class MainContainer extends StatefulWidget {
+  const MainContainer({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<MainContainer> createState() => _MainContainerState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-
-  final List<Widget> _pages = [
-    const MusicListBody(),
-    const Center(child: Text("Playlists Coming Soon")),
-    const Center(child: Text("Favorites List")),
+class _MainContainerState extends State<MainContainer> {
+  int _currentIndex = 0;
+  final List<Widget> _tabs = [
+    const MusicHome(),
+    const Center(child: Text("Playlists")),
+    const Center(child: Text("Favorites")),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: FadeInLeft(child: const Text("Menul Music Pro")),
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.settings), onPressed: () => _showSettings(context)),
-        ],
-      ),
-      body: _pages[_selectedIndex],
+      body: _tabs[_currentIndex],
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.playlist_play), label: 'Playlist'),
-          NavigationDestination(icon: Icon(Icons.favorite), label: 'Favorite'),
+          NavigationDestination(icon: Icon(Icons.home_filled), label: "Home"),
+          NavigationDestination(icon: Icon(Icons.playlist_play), label: "Playlist"),
+          NavigationDestination(icon: Icon(Icons.favorite), label: "Favorite"),
         ],
       ),
+    );
+  }
+}
+
+class MusicHome extends StatelessWidget {
+  const MusicHome({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar.large(
+          title: FadeInLeft(child: const Text("Discover Music")),
+          actions: [
+            IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () => _showSettings(context),
+            ),
+          ],
+        ),
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => FadeInUp(
+              delay: Duration(milliseconds: 50 * index),
+              child: ListTile(
+                leading: Container(
+                  width: 50, height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.music_note),
+                ),
+                title: Text("Song Title $index"),
+                subtitle: const Text("Artist Name"),
+                trailing: const Icon(Icons.more_vert),
+                onTap: () {},
+              ),
+            ),
+            childCount: 15,
+          ),
+        ),
+      ],
     );
   }
 
   void _showSettings(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
       builder: (context) => Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text("Settings", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Divider(),
             SwitchListTile(
               title: const Text("Dark Mode"),
+              secondary: const Icon(Icons.dark_mode),
               value: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark,
               onChanged: (val) => Provider.of<ThemeProvider>(context, listen: false).toggleTheme(val),
             ),
             ListTile(
-              leading: const Icon(Icons.info),
+              leading: const Icon(Icons.info_outline),
               title: const Text("About"),
-              subtitle: const Text("Created by Menul Mihisara"),
+              subtitle: const Text("Created by Menul Mihisara (2026 Edition)"),
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
-    );
-  }
-}
-
-class MusicListBody extends StatelessWidget {
-  const MusicListBody({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: 10,
-      itemBuilder: (context, index) {
-        return FadeInUp(
-          delay: Duration(milliseconds: 100 * index),
-          child: ListTile(
-            leading: CircleAvatar(backgroundColor: Colors.deepPurple),
-            title: Text("Song Name $index"),
-            subtitle: const Text("Artist Name"),
-            trailing: IconButton(
-              icon: const Icon(Icons.favorite_border),
-              onPressed: () {}, // Favorite logic
-            ),
-            onTap: () {
-              // Play Music Logic
-            },
-          ),
-        );
-      },
     );
   }
 }
