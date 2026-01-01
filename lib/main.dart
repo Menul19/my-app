@@ -1,164 +1,132 @@
 import 'package:flutter/material.dart';
-import 'package:on_audio_query/on_audio_query.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:google_mlkit_translation/google_mlkit_translation.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MaterialApp(home: SplashScreen(), debugShowCheckedModeBanner: false));
+  runApp(const MaterialApp(home: TranslatorApp(), debugShowCheckedModeBanner: false));
 }
 
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+class TranslatorApp extends StatefulWidget {
+  const TranslatorApp({super.key});
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  State<TranslatorApp> createState() => _TranslatorAppState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _TranslatorAppState extends State<TranslatorApp> {
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  final FlutterTts _tts = FlutterTts();
+  String _sourceText = "ඔබට අවශ්‍ය දේ පවසන්න...";
+  String _translatedText = "පරිවර්තනය මෙහි දිස්වේවි";
+  bool _isListening = false;
+
+  final _translator = OnDeviceTranslator(
+    sourceLanguage: TranslateLanguage.sinhala,
+    targetLanguage: TranslateLanguage.english,
+  );
+
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MenulMusicPro()));
-    });
+    _requestPermission();
   }
+
+  void _requestPermission() async {
+    await Permission.microphone.request();
+  }
+
+  void _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize();
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(onResult: (val) async {
+          setState(() {
+            _sourceText = val.recognizedWords;
+          });
+          if (val.finalResult) {
+            _translate();
+            setState(() => _isListening = false);
+          }
+        });
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
+
+  void _translate() async {
+    final result = await _translator.translateText(_sourceText);
+    setState(() => _translatedText = result);
+    await _tts.speak(result); // පරිවර්තනය කළ දේ ශබ්ද නගා කියවයි
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Center(
-        child: FadeIn(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.music_note_rounded, size: 100, color: Colors.cyanAccent),
-              const SizedBox(height: 20),
-              Text("Menul Music Pro", style: GoogleFonts.poppins(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold)),
-            ],
-          ),
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        title: Text("Traveler Assistant AI", style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.orangeAccent,
+        centerTitle: true,
+        elevation: 0,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            FadeInDown(child: _buildTextBox("සිංහල (Sinhala)", _sourceText, Colors.orange.shade100)),
+            const SizedBox(height: 20),
+            const Icon(Icons.swap_vert, size: 40, color: Colors.orangeAccent),
+            const SizedBox(height: 20),
+            FadeInUp(child: _buildTextBox("English (US)", _translatedText, Colors.blue.shade100)),
+            const Spacer(),
+            _buildMicButton(),
+            const SizedBox(height: 20),
+            Text(_isListening ? "මම අසා සිටිමි..." : "මයික්‍රොෆෝනය ඔබා කතා කරන්න", 
+              style: GoogleFonts.notoSansSinhala(color: Colors.grey)),
+          ],
         ),
       ),
     );
   }
-}
 
-class MenulMusicPro extends StatefulWidget {
-  const MenulMusicPro({super.key});
-  @override
-  State<MenulMusicPro> createState() => _MenulMusicProState();
-}
-
-class _MenulMusicProState extends State<MenulMusicPro> {
-  final OnAudioQuery _audioQuery = OnAudioQuery();
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  List<SongModel> _songs = [];
-  int _currentIndex = -1;
-  bool _isPlaying = false;
-  Duration _duration = Duration.zero;
-  Duration _position = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _audioPlayer.onDurationChanged.listen((d) => setState(() => _duration = d));
-    _audioPlayer.onPositionChanged.listen((p) => setState(() => _position = p));
-    _audioPlayer.onPlayerComplete.listen((event) => _nextSong());
-  }
-
-  void _requestPermission() async {
-    // Android 12/Redmi සඳහා නිවැරදි Permission ක්‍රමය
-    var status = await Permission.storage.request();
-    if (status.isDenied || status.isPermanentlyDenied) {
-      await Permission.manageExternalStorage.request();
-    }
-    _loadSongs();
-  }
-
-  _loadSongs() async {
-    try {
-      List<SongModel> temp = await _audioQuery.querySongs(uriType: UriType.EXTERNAL, ignoreCase: true);
-      setState(() => _songs = temp);
-    } catch (e) {
-      debugPrint("Songs Load Error: $e");
-    }
-  }
-
-  void _playSong(int index) {
-    _currentIndex = index;
-    _audioPlayer.play(DeviceFileSource(_songs[index].uri!));
-    setState(() => _isPlaying = true);
-  }
-
-  void _nextSong() { if (_currentIndex < _songs.length - 1) _playSong(_currentIndex + 1); }
-  void _prevSong() { if (_currentIndex > 0) _playSong(_currentIndex - 1); }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      appBar: AppBar(
-        title: Text("Menul Music Pro", style: GoogleFonts.poppins(color: Colors.white)),
-        backgroundColor: Colors.black,
-        elevation: 0,
-        actions: [IconButton(icon: const Icon(Icons.refresh, color: Colors.white), onPressed: _requestPermission)],
+  Widget _buildTextBox(String label, String text, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
       ),
-      body: Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: _songs.isEmpty 
-              ? Center(child: ElevatedButton(onPressed: _requestPermission, child: const Text("Load Songs & Permissions")))
-              : ListView.builder(
-                  itemCount: _songs.length,
-                  itemBuilder: (context, index) => ListTile(
-                    leading: QueryArtworkWidget(id: _songs[index].id, type: ArtworkType.AUDIO),
-                    title: Text(_songs[index].displayNameWOExt, maxLines: 1, style: const TextStyle(color: Colors.white)),
-                    subtitle: Text(_songs[index].artist ?? "Unknown Artist", style: const TextStyle(color: Colors.white54)),
-                    onTap: () => _playSong(index),
-                  ),
-                ),
-          ),
-          if (_currentIndex != -1) _buildPlayerControls(),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
+          const SizedBox(height: 10),
+          Text(text, style: GoogleFonts.notoSansSinhala(fontSize: 18, color: Colors.black87)),
         ],
       ),
     );
   }
 
-  Widget _buildPlayerControls() {
-    return SlideInUp(
+  Widget _buildMicButton() {
+    return GestureDetector(
+      onTap: _listen,
       child: Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.grey[900], borderRadius: const BorderRadius.vertical(top: Radius.circular(30))),
-        child: Column(
-          children: [
-            Text(_songs[_currentIndex].displayNameWOExt, maxLines: 1, style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
-            Slider(
-              activeColor: Colors.cyanAccent,
-              value: _position.inSeconds.toDouble(),
-              max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
-              onChanged: (v) => _audioPlayer.seek(Duration(seconds: v.toInt())),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(icon: const Icon(Icons.skip_previous, size: 35, color: Colors.white), onPressed: _prevSong),
-                IconButton(
-                  icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 55, color: Colors.cyanAccent),
-                  onPressed: () {
-                    _isPlaying ? _audioPlayer.pause() : _audioPlayer.resume();
-                    setState(() => _isPlaying = !_isPlaying);
-                  },
-                ),
-                IconButton(icon: const Icon(Icons.stop, size: 35, color: Colors.redAccent), onPressed: () {
-                  _audioPlayer.stop();
-                  setState(() => _isPlaying = false);
-                }),
-                IconButton(icon: const Icon(Icons.skip_next, size: 35, color: Colors.white), onPressed: _nextSong),
-              ],
-            ),
-          ],
+        decoration: BoxDecoration(
+          color: _isListening ? Colors.redAccent : Colors.orangeAccent,
+          shape: BoxShape.circle,
+          boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.4), blurRadius: 20, spreadRadius: 5)],
         ),
+        child: Icon(_isListening ? Icons.stop : Icons.mic, size: 50, color: Colors.white),
       ),
     );
   }
