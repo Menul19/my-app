@@ -68,6 +68,7 @@ class _MenulMusicProState extends State<MenulMusicPro> {
   }
 
   void _requestPermission() async {
+    // Android 12/Redmi සඳහා නිවැරදි Permission ක්‍රමය
     var status = await Permission.storage.request();
     if (status.isDenied || status.isPermanentlyDenied) {
       await Permission.manageExternalStorage.request();
@@ -80,7 +81,7 @@ class _MenulMusicProState extends State<MenulMusicPro> {
       List<SongModel> temp = await _audioQuery.querySongs(uriType: UriType.EXTERNAL, ignoreCase: true);
       setState(() => _songs = temp);
     } catch (e) {
-      debugPrint("Error: $e");
+      debugPrint("Songs Load Error: $e");
     }
   }
 
@@ -98,20 +99,22 @@ class _MenulMusicProState extends State<MenulMusicPro> {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
-        title: Text("Menul Music Pro", style: GoogleFonts.poppins()),
-        backgroundColor: Colors.cyanAccent.withOpacity(0.7),
-        actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _requestPermission)],
+        title: Text("Menul Music Pro", style: GoogleFonts.poppins(color: Colors.white)),
+        backgroundColor: Colors.black,
+        elevation: 0,
+        actions: [IconButton(icon: const Icon(Icons.refresh, color: Colors.white), onPressed: _requestPermission)],
       ),
       body: Column(
         children: [
           Expanded(
             child: _songs.isEmpty 
-              ? Center(child: ElevatedButton(onPressed: _requestPermission, child: const Text("Load Songs / Grant Permission")))
+              ? Center(child: ElevatedButton(onPressed: _requestPermission, child: const Text("Load Songs & Permissions")))
               : ListView.builder(
                   itemCount: _songs.length,
                   itemBuilder: (context, index) => ListTile(
                     leading: QueryArtworkWidget(id: _songs[index].id, type: ArtworkType.AUDIO),
                     title: Text(_songs[index].displayNameWOExt, maxLines: 1, style: const TextStyle(color: Colors.white)),
+                    subtitle: Text(_songs[index].artist ?? "Unknown Artist", style: const TextStyle(color: Colors.white54)),
                     onTap: () => _playSong(index),
                   ),
                 ),
@@ -125,8 +128,8 @@ class _MenulMusicProState extends State<MenulMusicPro> {
   Widget _buildPlayerControls() {
     return SlideInUp(
       child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(color: Colors.grey[900], borderRadius: const BorderRadius.vertical(top: Radius.circular(25))),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: Colors.grey[900], borderRadius: const BorderRadius.vertical(top: Radius.circular(30))),
         child: Column(
           children: [
             Text(_songs[_currentIndex].displayNameWOExt, maxLines: 1, style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
