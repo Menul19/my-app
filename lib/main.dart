@@ -33,6 +33,7 @@ class MenulMusicPro extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      title: 'Menul Music Pro',
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
@@ -45,74 +46,7 @@ class MenulMusicPro extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF0F0E17),
       ),
       themeMode: themeProvider.themeMode,
-      home: const SplashScreen(),
-    );
-  }
-}
-
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _navigateToHome();
-  }
-
-  _navigateToHome() async {
-    await Future.delayed(const Duration(seconds: 3));
-    if (mounted) {
-      Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (context) => const MainContainer()));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: FadeInDown(
-          child: Text("Menul Music Pro", 
-            style: GoogleFonts.poppins(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.deepPurpleAccent)),
-        ),
-      ),
-    );
-  }
-}
-
-class MainContainer extends StatefulWidget {
-  const MainContainer({super.key});
-
-  @override
-  State<MainContainer> createState() => _MainContainerState();
-}
-
-class _MainContainerState extends State<MainContainer> {
-  int _currentIndex = 0;
-  final List<Widget> _tabs = [
-    const MusicHome(),
-    const Center(child: Text("Playlists")),
-    const Center(child: Text("Favorites")),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _tabs[_currentIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (i) => setState(() => _currentIndex = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: "Home"),
-          NavigationDestination(icon: Icon(Icons.playlist_play), label: "Playlist"),
-          NavigationDestination(icon: Icon(Icons.favorite), label: "Favorite"),
-        ],
-      ),
+      home: const MusicHome(),
     );
   }
 }
@@ -132,17 +66,17 @@ class _MusicHomeState extends State<MusicHome> {
   @override
   void initState() {
     super.initState();
-    checkAndRequestPermissions();
+    requestStoragePermission();
   }
 
-  // Crash වීම නැවැත්වීමට නිවැරදිව Permissions ඉල්ලීම
-  checkAndRequestPermissions() async {
-    bool status = await _audioQuery.permissionsStatus();
-    if (!status) {
-      status = await _audioQuery.permissionsRequest();
+  // Android 13/14 සඳහා නිවැරදිව Permission ඉල්ලීම
+  void requestStoragePermission() async {
+    bool permissionStatus = await _audioQuery.permissionsStatus();
+    if (!permissionStatus) {
+      permissionStatus = await _audioQuery.permissionsRequest();
     }
     setState(() {
-      _hasPermission = status;
+      _hasPermission = permissionStatus;
     });
   }
 
@@ -155,12 +89,30 @@ class _MusicHomeState extends State<MusicHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Menul Music Pro")),
+      appBar: AppBar(
+        title: FadeInLeft(child: const Text("Menul Music Pro")),
+        actions: [
+          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => _showSettings(context),
+          ),
+        ],
+      ),
       body: !_hasPermission
           ? Center(
-              child: ElevatedButton(
-                onPressed: checkAndRequestPermissions,
-                child: const Text("Allow Access to Music"),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.lock_person, size: 60, color: Colors.grey),
+                  const SizedBox(height: 10),
+                  const Text("Need Permission to Show Songs"),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: requestStoragePermission,
+                    child: const Text("Allow Access"),
+                  ),
+                ],
               ),
             )
           : FutureBuilder<List<SongModel>>(
@@ -171,30 +123,59 @@ class _MusicHomeState extends State<MusicHome> {
                 ignoreCase: true,
               ),
               builder: (context, item) {
-                if (item.hasError) return Center(child: Text(item.error.toString()));
                 if (item.data == null) return const Center(child: CircularProgressIndicator());
-                if (item.data!.isEmpty) return const Center(child: Text("No Songs Found!"));
+                if (item.data!.isEmpty) return const Center(child: Text("No Music Found!"));
 
                 return ListView.builder(
                   itemCount: item.data!.length,
-                  itemBuilder: (context, index) {
-                    return FadeInUp(
-                      duration: const Duration(milliseconds: 300),
-                      child: ListTile(
-                        leading: QueryArtworkWidget(
-                          id: item.data![index].id,
-                          type: ArtworkType.AUDIO,
-                          nullArtworkWidget: const CircleAvatar(child: Icon(Icons.music_note)),
-                        ),
-                        title: Text(item.data![index].displayNameWOExt),
-                        subtitle: Text("${item.data![index].artist}"),
-                        onTap: () => playSong(item.data![index].uri),
+                  itemBuilder: (context, index) => FadeInUp(
+                    delay: Duration(milliseconds: 50 * index),
+                    child: ListTile(
+                      leading: QueryArtworkWidget(
+                        id: item.data![index].id,
+                        type: ArtworkType.AUDIO,
+                        nullArtworkWidget: const CircleAvatar(child: Icon(Icons.music_note)),
                       ),
-                    );
-                  },
+                      title: Text(item.data![index].displayNameWOExt, maxLines: 1),
+                      subtitle: Text("${item.data![index].artist}", maxLines: 1),
+                      onTap: () => playSong(item.data![index].uri),
+                    ),
+                  ),
                 );
               },
             ),
+      bottomNavigationBar: NavigationBar(
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home), label: "Home"),
+          NavigationDestination(icon: Icon(Icons.playlist_play), label: "Playlist"),
+          NavigationDestination(icon: Icon(Icons.favorite), label: "Favorite"),
+        ],
+      ),
+    );
+  }
+
+  void _showSettings(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Settings", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            SwitchListTile(
+              title: const Text("Dark Mode"),
+              value: Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark,
+              onChanged: (val) => Provider.of<ThemeProvider>(context, listen: false).toggleTheme(val),
+            ),
+            const ListTile(
+              leading: Icon(Icons.info),
+              title: Text("About"),
+              subtitle: Text("Created by Menul Mihisara"),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
