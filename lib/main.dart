@@ -1,37 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:animate_do/animate_do.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MenulMusicPro());
+  runApp(const MaterialApp(home: SplashScreen(), debugShowCheckedModeBanner: false));
 }
 
-class MenulMusicPro extends StatelessWidget {
-  const MenulMusicPro({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Menul Music Pro',
-      themeMode: ThemeMode.system,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.green,
-        brightness: Brightness.light,
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.green,
-        brightness: Brightness.dark,
-      ),
-      home: const SplashScreen(),
-    );
-  }
-}
-
-/* ---------------- SPLASH ---------------- */
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
   @override
@@ -42,218 +20,139 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const PlayerScreen()),
-      );
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MenulMusicPro()));
     });
   }
-
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
+      backgroundColor: Colors.black,
       body: Center(
-        child: Text(
-          "Menul Music Pro",
-          style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+        child: FadeIn(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.music_note_rounded, size: 100, color: Colors.cyanAccent),
+              const SizedBox(height: 20),
+              Text("Menul Music Pro", style: GoogleFonts.poppins(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/* ---------------- PLAYER ---------------- */
-class PlayerScreen extends StatefulWidget {
-  const PlayerScreen({super.key});
+class MenulMusicPro extends StatefulWidget {
+  const MenulMusicPro({super.key});
   @override
-  State<PlayerScreen> createState() => _PlayerScreenState();
+  State<MenulMusicPro> createState() => _MenulMusicProState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> {
+class _MenulMusicProState extends State<MenulMusicPro> {
   final OnAudioQuery _audioQuery = OnAudioQuery();
-  final AudioPlayer _player = AudioPlayer();
-
+  final AudioPlayer _audioPlayer = AudioPlayer();
   List<SongModel> _songs = [];
-  int _index = 0;
+  int _currentIndex = -1;
+  bool _isPlaying = false;
+  Duration _duration = Duration.zero;
+  Duration _position = Duration.zero;
 
   @override
   void initState() {
     super.initState();
+    _audioPlayer.onDurationChanged.listen((d) => setState(() => _duration = d));
+    _audioPlayer.onPositionChanged.listen((p) => setState(() => _position = p));
+    _audioPlayer.onPlayerComplete.listen((event) => _nextSong());
+  }
+
+  void _requestPermission() async {
+    var status = await Permission.storage.request();
+    if (status.isDenied || status.isPermanentlyDenied) {
+      await Permission.manageExternalStorage.request();
+    }
     _loadSongs();
   }
 
-  Future<void> _loadSongs() async {
-    bool permission = await _audioQuery.permissionsRequest();
-    if (!permission) return;
-
-    _songs = await _audioQuery.querySongs(
-      uriType: UriType.EXTERNAL,
-      ignoreCase: true,
-      sortType: SongSortType.DATE_ADDED,
-      orderType: OrderType.DESC_OR_GREATER,
-    );
-
-    setState(() {});
+  _loadSongs() async {
+    try {
+      List<SongModel> temp = await _audioQuery.querySongs(uriType: UriType.EXTERNAL, ignoreCase: true);
+      setState(() => _songs = temp);
+    } catch (e) {
+      debugPrint("Error: $e");
+    }
   }
 
-  Future<void> _playSong(int index) async {
-    _index = index;
-    await _player.setAudioSource(
-      AudioSource.uri(Uri.parse(_songs[index].uri!)),
-    );
-    _player.play();
-    setState(() {});
+  void _playSong(int index) {
+    _currentIndex = index;
+    _audioPlayer.play(DeviceFileSource(_songs[index].uri!));
+    setState(() => _isPlaying = true);
   }
 
-  void _next() {
-    if (_songs.isEmpty) return;
-    _playSong((_index + 1) % _songs.length);
-  }
-
-  void _previous() {
-    if (_songs.isEmpty) return;
-    _playSong(_index == 0 ? _songs.length - 1 : _index - 1);
-  }
+  void _nextSong() { if (_currentIndex < _songs.length - 1) _playSong(_currentIndex + 1); }
+  void _prevSong() { if (_currentIndex > 0) _playSong(_currentIndex - 1); }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
-        title: const Text("Menul Music Pro"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AboutScreen()),
-              );
-            },
-          )
+        title: Text("Menul Music Pro", style: GoogleFonts.poppins()),
+        backgroundColor: Colors.cyanAccent.withOpacity(0.7),
+        actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _requestPermission)],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: _songs.isEmpty 
+              ? Center(child: ElevatedButton(onPressed: _requestPermission, child: const Text("Load Songs / Grant Permission")))
+              : ListView.builder(
+                  itemCount: _songs.length,
+                  itemBuilder: (context, index) => ListTile(
+                    leading: QueryArtworkWidget(id: _songs[index].id, type: ArtworkType.AUDIO),
+                    title: Text(_songs[index].displayNameWOExt, maxLines: 1, style: const TextStyle(color: Colors.white)),
+                    onTap: () => _playSong(index),
+                  ),
+                ),
+          ),
+          if (_currentIndex != -1) _buildPlayerControls(),
         ],
       ),
-      body: _songs.isEmpty
-          ? const Center(child: Text("No songs found"))
-          : ListView.builder(
-              itemCount: _songs.length,
-              itemBuilder: (_, i) => ListTile(
-                leading: const Icon(Icons.music_note),
-                title: Text(_songs[i].title),
-                subtitle: Text(_songs[i].artist ?? "Unknown"),
-                onTap: () => _playSong(i),
-              ),
-            ),
-      bottomNavigationBar: BottomAppBar(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // SEEK BAR
-            StreamBuilder<Duration>(
-              stream: _player.positionStream,
-              builder: (_, snapshot) {
-                final position = snapshot.data ?? Duration.zero;
-                final duration = _player.duration ?? Duration.zero;
-                return Slider(
-                  min: 0,
-                  max: duration.inSeconds.toDouble() == 0
-                      ? 1
-                      : duration.inSeconds.toDouble(),
-                  value: position.inSeconds
-                      .toDouble()
-                      .clamp(0, duration.inSeconds.toDouble()),
-                  onChanged: (v) {
-                    _player.seek(Duration(seconds: v.toInt()));
-                  },
-                );
-              },
-            ),
+    );
+  }
 
-            // CONTROLS
+  Widget _buildPlayerControls() {
+    return SlideInUp(
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(color: Colors.grey[900], borderRadius: const BorderRadius.vertical(top: Radius.circular(25))),
+        child: Column(
+          children: [
+            Text(_songs[_currentIndex].displayNameWOExt, maxLines: 1, style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+            Slider(
+              activeColor: Colors.cyanAccent,
+              value: _position.inSeconds.toDouble(),
+              max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
+              onChanged: (v) => _audioPlayer.seek(Duration(seconds: v.toInt())),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // SHUFFLE
+                IconButton(icon: const Icon(Icons.skip_previous, size: 35, color: Colors.white), onPressed: _prevSong),
                 IconButton(
-                  icon: Icon(
-                    Icons.shuffle,
-                    color: _player.shuffleModeEnabled
-                        ? Colors.green
-                        : Colors.grey,
-                  ),
-                  onPressed: () async {
-                    bool enabled = !_player.shuffleModeEnabled;
-                    await _player.setShuffleModeEnabled(enabled);
-                    setState(() {});
-                  },
-                ),
-
-                // PREVIOUS
-                IconButton(
-                  icon: const Icon(Icons.skip_previous),
-                  onPressed: _previous,
-                ),
-
-                // PLAY / PAUSE
-                IconButton(
-                  iconSize: 48,
-                  icon: Icon(
-                    _player.playing
-                        ? Icons.pause_circle_filled
-                        : Icons.play_circle_fill,
-                  ),
+                  icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 55, color: Colors.cyanAccent),
                   onPressed: () {
-                    _player.playing ? _player.pause() : _player.play();
-                    setState(() {});
+                    _isPlaying ? _audioPlayer.pause() : _audioPlayer.resume();
+                    setState(() => _isPlaying = !_isPlaying);
                   },
                 ),
-
-                // NEXT
-                IconButton(
-                  icon: const Icon(Icons.skip_next),
-                  onPressed: _next,
-                ),
-
-                // REPEAT
-                IconButton(
-                  icon: Icon(
-                    Icons.repeat,
-                    color: _player.loopMode == LoopMode.one
-                        ? Colors.green
-                        : Colors.grey,
-                  ),
-                  onPressed: () {
-                    _player.setLoopMode(
-                      _player.loopMode == LoopMode.one
-                          ? LoopMode.off
-                          : LoopMode.one,
-                    );
-                    setState(() {});
-                  },
-                ),
+                IconButton(icon: const Icon(Icons.stop, size: 35, color: Colors.redAccent), onPressed: () {
+                  _audioPlayer.stop();
+                  setState(() => _isPlaying = false);
+                }),
+                IconButton(icon: const Icon(Icons.skip_next, size: 35, color: Colors.white), onPressed: _nextSong),
               ],
-            ),
-
-            // VOLUME
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  const Icon(Icons.volume_down),
-                  Expanded(
-                    child: Slider(
-                      min: 0,
-                      max: 1,
-                      value: _player.volume,
-                      onChanged: (v) {
-                        _player.setVolume(v);
-                        setState(() {});
-                      },
-                    ),
-                  ),
-                  const Icon(Icons.volume_up),
-                ],
-              ),
             ),
           ],
         ),
@@ -262,20 +161,3 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 }
 
-/* ---------------- ABOUT ---------------- */
-class AboutScreen extends StatelessWidget {
-  const AboutScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text(
-          "Menul Music Pro\n\nDeveloped by Menul Mihisara\n© 2026",
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18),
-        ),
-      ),
-    );
-  }
-}
