@@ -2,8 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:animate_do/animate_do.dart';
 
-void main() => runApp(const MaterialApp(home: MenulMusicPro(), debugShowCheckedModeBanner: false));
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MaterialApp(home: SplashScreen(), debugShowCheckedModeBanner: false));
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MenulMusicPro()));
+    });
+  }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: FadeIn(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.music_note_rounded, size: 100, color: Colors.cyanAccent),
+              const SizedBox(height: 20),
+              Text("Menul Music Pro", style: GoogleFonts.poppins(fontSize: 30, color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class MenulMusicPro extends StatefulWidget {
   const MenulMusicPro({super.key});
@@ -23,26 +62,20 @@ class _MenulMusicProState extends State<MenulMusicPro> {
   @override
   void initState() {
     super.initState();
-    // ආරම්භයේදී කිසිවක් නොකරයි (Crash වීම වැළැක්වීමට)
     _audioPlayer.onDurationChanged.listen((d) => setState(() => _duration = d));
     _audioPlayer.onPositionChanged.listen((p) => setState(() => _position = p));
     _audioPlayer.onPlayerComplete.listen((event) => _nextSong());
   }
 
-  // බටන් එකක් එබූ විට පමණක් Permission ඉල්ලීම
-  Future<void> _handlePermission() async {
+  void _requestPermission() async {
     var status = await Permission.storage.request();
-    if (status.isGranted) {
-      _loadSongs();
-    } else {
-      await Permission.manageExternalStorage.request();
-      _loadSongs();
-    }
+    if (status.isDenied) await Permission.manageExternalStorage.request();
+    _loadSongs();
   }
 
-  void _loadSongs() async {
-    _songs = await _audioQuery.querySongs(uriType: UriType.EXTERNAL, ignoreCase: true);
-    setState(() {});
+  _loadSongs() async {
+    List<SongModel> temp = await _audioQuery.querySongs(uriType: UriType.EXTERNAL);
+    setState(() => _songs = temp);
   }
 
   void _playSong(int index) {
@@ -57,13 +90,13 @@ class _MenulMusicProState extends State<MenulMusicPro> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(title: const Text("Menul Music Pro"), backgroundColor: Colors.cyan),
+      backgroundColor: const Color(0xFF0F0F0F),
+      appBar: AppBar(title: const Text("Menul Music Pro"), backgroundColor: Colors.cyanAccent),
       body: Column(
         children: [
           Expanded(
             child: _songs.isEmpty 
-              ? Center(child: ElevatedButton(onPressed: _handlePermission, child: const Text("Load Songs (Grant Permission)")))
+              ? Center(child: ElevatedButton(onPressed: _requestPermission, child: const Text("Load Songs")))
               : ListView.builder(
                   itemCount: _songs.length,
                   itemBuilder: (context, index) => ListTile(
@@ -73,16 +106,16 @@ class _MenulMusicProState extends State<MenulMusicPro> {
                   ),
                 ),
           ),
-          if (_currentIndex != -1) _bottomPlayer(),
+          if (_currentIndex != -1) _buildPlayer(),
         ],
       ),
     );
   }
 
-  Widget _bottomPlayer() {
+  Widget _buildPlayer() {
     return Container(
-      padding: const EdgeInsets.all(10),
-      color: Colors.grey[900],
+      padding: const EdgeInsets.all(20),
+      color: Colors.black87,
       child: Column(
         children: [
           Slider(
@@ -94,12 +127,15 @@ class _MenulMusicProState extends State<MenulMusicPro> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(icon: const Icon(Icons.skip_previous, color: Colors.white), onPressed: _prevSong),
-              IconButton(icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.cyan, size: 40), 
+              IconButton(icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.cyanAccent, size: 40), 
                 onPressed: () {
                   _isPlaying ? _audioPlayer.pause() : _audioPlayer.resume();
                   setState(() => _isPlaying = !_isPlaying);
                 }),
-              IconButton(icon: const Icon(Icons.stop, color: Colors.red), onPressed: () => _audioPlayer.stop()),
+              IconButton(icon: const Icon(Icons.stop, color: Colors.red), onPressed: () {
+                _audioPlayer.stop();
+                setState(() => _isPlaying = false);
+              }),
               IconButton(icon: const Icon(Icons.skip_next, color: Colors.white), onPressed: _nextSong),
             ],
           ),
