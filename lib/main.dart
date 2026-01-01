@@ -2,38 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-void main() {
-  WidgetsFlutterBinding.ensureInitialized(); // Crash වීම වැළැක්වීමට මෙය අත්‍යවශ්‍යයි
-  runApp(const MaterialApp(home: SplashScreen(), debugShowCheckedModeBanner: false));
-}
-
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // තත්පර 3ක ප්‍රමාදයක් ලබා දීමෙන් ඇප් එක ස්ථාවර වේ
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MenulMusicPro()));
-      }
-    });
-  }
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.black,
-      body: Center(child: Icon(Icons.music_note, size: 100, color: Colors.cyanAccent)),
-    );
-  }
-}
+void main() => runApp(const MaterialApp(home: MenulMusicPro(), debugShowCheckedModeBanner: false));
 
 class MenulMusicPro extends StatefulWidget {
   const MenulMusicPro({super.key});
@@ -45,68 +15,96 @@ class _MenulMusicProState extends State<MenulMusicPro> {
   final OnAudioQuery _audioQuery = OnAudioQuery();
   final AudioPlayer _audioPlayer = AudioPlayer();
   List<SongModel> _songs = [];
-  bool _isPermissionGranted = false;
+  int _currentIndex = -1;
+  bool _isPlaying = false;
+  Duration _duration = Duration.zero;
+  Duration _position = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _checkPermission();
+    // ආරම්භයේදී කිසිවක් නොකරයි (Crash වීම වැළැක්වීමට)
+    _audioPlayer.onDurationChanged.listen((d) => setState(() => _duration = d));
+    _audioPlayer.onPositionChanged.listen((p) => setState(() => _position = p));
+    _audioPlayer.onPlayerComplete.listen((event) => _nextSong());
   }
 
-  // ඉතා ආරක්ෂිතව Permission පරීක්ෂා කිරීම
-  void _checkPermission() async {
-    try {
-      bool permissionStatus = await _audioQuery.permissionsStatus();
-      if (!permissionStatus) {
-        await _audioQuery.permissionsRequest();
-      }
-      
-      var status = await Permission.storage.status;
-      if (status.isGranted) {
-        setState(() => _isPermissionGranted = true);
-        _loadSongs();
-      } else {
-        // Redmi සඳහා විශේෂිතයි
-        await Permission.manageExternalStorage.request();
-        _loadSongs();
-      }
-    } catch (e) {
-      debugPrint("Permission Error: $e");
+  // බටන් එකක් එබූ විට පමණක් Permission ඉල්ලීම
+  Future<void> _handlePermission() async {
+    var status = await Permission.storage.request();
+    if (status.isGranted) {
+      _loadSongs();
+    } else {
+      await Permission.manageExternalStorage.request();
+      _loadSongs();
     }
   }
 
-  _loadSongs() async {
-    try {
-      _songs = await _audioQuery.querySongs(uriType: UriType.EXTERNAL);
-      setState(() {});
-    } catch (e) {
-      debugPrint("Load Error: $e");
-    }
+  void _loadSongs() async {
+    _songs = await _audioQuery.querySongs(uriType: UriType.EXTERNAL, ignoreCase: true);
+    setState(() {});
   }
+
+  void _playSong(int index) {
+    _currentIndex = index;
+    _audioPlayer.play(DeviceFileSource(_songs[index].uri!));
+    setState(() => _isPlaying = true);
+  }
+
+  void _nextSong() { if (_currentIndex < _songs.length - 1) _playSong(_currentIndex + 1); }
+  void _prevSong() { if (_currentIndex > 0) _playSong(_currentIndex - 1); }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
-      appBar: AppBar(title: Text("Menul Music Pro", style: GoogleFonts.poppins())),
-      body: _songs.isEmpty 
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("No songs found!", style: TextStyle(color: Colors.white)),
-                  ElevatedButton(onPressed: _checkPermission, child: const Text("Give Permission")),
-                ],
-              ),
-            )
-          : ListView.builder(
-              itemCount: _songs.length,
-              itemBuilder: (context, index) => ListTile(
-                leading: QueryArtworkWidget(id: _songs[index].id, type: ArtworkType.AUDIO),
-                title: Text(_songs[index].displayNameWOExt, style: const TextStyle(color: Colors.white)),
-                onTap: () => _audioPlayer.play(DeviceFileSource(_songs[index].uri!)),
-              ),
-            ),
+      backgroundColor: Colors.black,
+      appBar: AppBar(title: const Text("Menul Music Pro"), backgroundColor: Colors.cyan),
+      body: Column(
+        children: [
+          Expanded(
+            child: _songs.isEmpty 
+              ? Center(child: ElevatedButton(onPressed: _handlePermission, child: const Text("Load Songs (Grant Permission)")))
+              : ListView.builder(
+                  itemCount: _songs.length,
+                  itemBuilder: (context, index) => ListTile(
+                    leading: QueryArtworkWidget(id: _songs[index].id, type: ArtworkType.AUDIO),
+                    title: Text(_songs[index].displayNameWOExt, style: const TextStyle(color: Colors.white)),
+                    onTap: () => _playSong(index),
+                  ),
+                ),
+          ),
+          if (_currentIndex != -1) _bottomPlayer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _bottomPlayer() {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      color: Colors.grey[900],
+      child: Column(
+        children: [
+          Slider(
+            value: _position.inSeconds.toDouble(),
+            max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
+            onChanged: (v) => _audioPlayer.seek(Duration(seconds: v.toInt())),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(icon: const Icon(Icons.skip_previous, color: Colors.white), onPressed: _prevSong),
+              IconButton(icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.cyan, size: 40), 
+                onPressed: () {
+                  _isPlaying ? _audioPlayer.pause() : _audioPlayer.resume();
+                  setState(() => _isPlaying = !_isPlaying);
+                }),
+              IconButton(icon: const Icon(Icons.stop, color: Colors.red), onPressed: () => _audioPlayer.stop()),
+              IconButton(icon: const Icon(Icons.skip_next, color: Colors.white), onPressed: _nextSong),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
