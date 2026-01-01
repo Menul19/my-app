@@ -18,28 +18,16 @@ void main() {
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.dark;
   ThemeMode get themeMode => _themeMode;
-  void toggleTheme(bool isDark) {
-    _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners();
-  }
 }
 
 class MenulMusicPro extends StatelessWidget {
   const MenulMusicPro({super.key});
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.cyanAccent),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorSchemeSeed: Colors.cyanAccent,
-        scaffoldBackgroundColor: const Color(0xFF09090B),
-      ),
-      themeMode: themeProvider.themeMode,
-      home: const SplashScreen(), // මුලින්ම පෙන්වන්නේ මෙයයි
+      theme: ThemeData(useMaterial3: true, brightness: Brightness.dark, colorSchemeSeed: Colors.cyanAccent),
+      home: const SplashScreen(),
     );
   }
 }
@@ -56,9 +44,7 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainContainer()));
-      }
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainContainer()));
     });
   }
 
@@ -66,15 +52,14 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: FadeInDown(
+        child: FadeIn(
           duration: const Duration(seconds: 2),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.music_note_rounded, size: 100, color: Colors.cyanAccent),
-              const SizedBox(height: 20),
-              Text("Menul Music Pro", 
-                style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+              const Icon(Icons.music_note_rounded, size: 80, color: Colors.cyanAccent),
+              const SizedBox(height: 10),
+              Text("Menul Music Pro", style: GoogleFonts.poppins(fontSize: 28, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -105,6 +90,20 @@ class _MainContainerState extends State<MainContainer> {
     _audioPlayer.play(DeviceFileSource(songs[index].uri!));
   }
 
+  // Next Song Function
+  void _nextSong() {
+    if (_currentSongIndex < _allSongs.length - 1) {
+      _playSong(_allSongs, _currentSongIndex + 1);
+    }
+  }
+
+  // Previous Song Function
+  void _prevSong() {
+    if (_currentSongIndex > 0) {
+      _playSong(_allSongs, _currentSongIndex - 1);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Widget> tabs = [
@@ -118,14 +117,14 @@ class _MainContainerState extends State<MainContainer> {
         children: [
           tabs[_currentIndex],
           if (_currentSongIndex != -1)
-            Positioned(bottom: 0, left: 0, right: 0, child: _buildMiniPlayer()),
+            Positioned(bottom: 0, left: 0, right: 0, child: _buildAdvancedPlayer()),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_filled), label: "Home"),
+          NavigationDestination(icon: Icon(Icons.home), label: "Home"),
           NavigationDestination(icon: Icon(Icons.library_music), label: "Library"),
           NavigationDestination(icon: Icon(Icons.favorite), label: "Liked"),
         ],
@@ -133,20 +132,35 @@ class _MainContainerState extends State<MainContainer> {
     );
   }
 
-  Widget _buildMiniPlayer() {
+  Widget _buildAdvancedPlayer() {
     return SlideInUp(
       child: Container(
-        height: 70, margin: const EdgeInsets.all(10), padding: const EdgeInsets.symmetric(horizontal: 15),
-        decoration: BoxDecoration(color: Colors.cyanAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.cyanAccent.withOpacity(0.3))),
-        child: Row(
+        height: 110, margin: const EdgeInsets.all(12), padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey[900], borderRadius: BorderRadius.circular(25),
+          border: Border.all(color: Colors.cyanAccent.withOpacity(0.3)),
+        ),
+        child: Column(
           children: [
-            QueryArtworkWidget(id: _allSongs[_currentSongIndex].id, type: ArtworkType.AUDIO, size: 45),
-            const SizedBox(width: 15),
-            Expanded(child: Text(_allSongs[_currentSongIndex].displayNameWOExt, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.bold))),
-            IconButton(icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 40), onPressed: () {
-              _isPlaying ? _audioPlayer.pause() : _audioPlayer.resume();
-              setState(() => _isPlaying = !_isPlaying);
-            }),
+            Row(
+              children: [
+                ClipRRect(borderRadius: BorderRadius.circular(10), child: QueryArtworkWidget(id: _allSongs[_currentSongIndex].id, type: ArtworkType.AUDIO, size: 40)),
+                const SizedBox(width: 10),
+                Expanded(child: Text(_allSongs[_currentSongIndex].displayNameWOExt, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.bold))),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(icon: const Icon(Icons.skip_previous), onPressed: _prevSong),
+                IconButton(icon: const Icon(Icons.stop), onPressed: () { _audioPlayer.stop(); setState(() => _isPlaying = false); }),
+                IconButton(icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 35, color: Colors.cyanAccent), onPressed: () {
+                  _isPlaying ? _audioPlayer.pause() : _audioPlayer.resume();
+                  setState(() => _isPlaying = !_isPlaying);
+                }),
+                IconButton(icon: const Icon(Icons.skip_next), onPressed: _nextSong),
+              ],
+            ),
           ],
         ),
       ),
@@ -169,23 +183,12 @@ class _MusicHomeState extends State<MusicHome> {
   @override
   void initState() {
     super.initState();
-    _requestPermission();
+    _checkPermission();
   }
 
-  // Android 12 Storage Permission Fix
-  void _requestPermission() async {
-    // පළමුව Permission ලබාගෙන ඇත්දැයි බලන්න
-    var status = await Permission.storage.status;
-    if (!status.isGranted) {
-      status = await Permission.storage.request();
-    }
-    
-    // වැදගත්: Android 11/12 සඳහා 'Manage External Storage' සමහරවිට අවශ්‍ය වේ
-    if (status.isPermanentlyDenied) {
-      openAppSettings();
-    }
-
-    if (status.isGranted) {
+  void _checkPermission() async {
+    // Android 12 වලට විශේෂිතව මෙන්න මේ Permission එක ඉල්ලන්න ඕන
+    if (await Permission.audio.request().isGranted || await Permission.storage.request().isGranted) {
       _loadSongs();
     } else {
       setState(() => _isLoading = false);
@@ -194,10 +197,7 @@ class _MusicHomeState extends State<MusicHome> {
 
   _loadSongs() async {
     List<SongModel> temp = await _audioQuery.querySongs(uriType: UriType.EXTERNAL, ignoreCase: true);
-    setState(() {
-      _songs = temp;
-      _isLoading = false;
-    });
+    setState(() { _songs = temp; _isLoading = false; });
   }
 
   @override
@@ -207,12 +207,10 @@ class _MusicHomeState extends State<MusicHome> {
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
           : _songs.isEmpty 
-              ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Text("No songs found! Did you allow permission?"),
-                  ElevatedButton(onPressed: _requestPermission, child: const Text("Try Again"))
-                ]))
+              ? Center(child: ElevatedButton(onPressed: _checkPermission, child: const Text("Allow Access & Refresh")))
               : ListView.builder(
                   itemCount: _songs.length,
+                  padding: const EdgeInsets.only(bottom: 120),
                   itemBuilder: (context, index) => ListTile(
                     leading: QueryArtworkWidget(id: _songs[index].id, type: ArtworkType.AUDIO),
                     title: Text(_songs[index].displayNameWOExt, maxLines: 1),
